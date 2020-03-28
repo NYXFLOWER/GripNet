@@ -1,4 +1,16 @@
 import torch
+import numpy as np
+from torch.nn import Parameter, Module
+
+
+torch.manual_seed(1111)
+np.random.seed(1111)
+EPS = 1e-13
+
+
+def normalize(input):
+    norm_square = (input ** 2).sum(dim=1)
+    return input / torch.sqrt(norm_square.view(-1, 1))
 
 
 def load_graph(pt_file_path='./sample_graph.pt'):
