@@ -1,9 +1,9 @@
 from src.utils import *
 
 
-class MultiInnerProductDecoder(Module):
+class multiInnerProductDecoder(Module):
     def __init__(self, in_dim, num_et):
-        super(MultiInnerProductDecoder, self).__init__()
+        super(multiInnerProductDecoder, self).__init__()
         self.num_et = num_et
         self.in_dim = in_dim
         self.weight = Parameter(torch.Tensor(num_et, in_dim))
