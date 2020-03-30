@@ -44,7 +44,7 @@ class myGCN(MessagePassing):
     @staticmethod
     def norm(edge_index, num_nodes, edge_weight, improved=False, dtype=None):
         if edge_weight is None:
-            edge_weight = torch.ones((edge_index.size(1), ),
+            edge_weight = torch.ones((edge_index.size(1),),
                                      dtype=dtype,
                                      device=edge_index.device)
 
@@ -92,33 +92,138 @@ class myGCN(MessagePassing):
                                    self.out_channels)
 
 
-class homoGraph(Module):
+class myRGCN(MessagePassing):
+    r"""
+    Args:
+        in_channels (int): Size of each input sample.
+        out_channels (int): Size of each output sample.
+        num_relations (int): Number of relations.
+        num_bases (int): Number of bases used for basis-decomposition.
+        bias (bool, optional): If set to :obj:`False`, the layer will not learn
+            an additive bias. (default: :obj:`True`)
+        **kwargs (optional): Additional arguments of
+            :class:`torch_geometric.nn.conv.MessagePassing`.
+    """
 
-    def __init__(self, in_dim, nhid_list, requires_grad=True):
-        super(homoGraph, self).__init__()
-        self.out_dim = nhid_list[-1]
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 num_relations,
+                 num_bases,
+                 after_relu,
+                 bias=False,
+                 **kwargs):
+        super(myRGCN, self).__init__(aggr='mean', **kwargs)
 
-        self.embedding = torch.nn.Parameter(torch.Tensor(in_dim, nhid_list[0]))
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.num_relations = num_relations
+        self.num_bases = num_bases
+        self.after_relu = after_relu
 
-        self.conv_list = torch.nn.ModuleList(
-            [myGCN(nhid_list[i], nhid_list[i + 1], cached=True) for i in range(len(nhid_list) - 1)]
-        )
+        self.basis = Parameter(
+            torch.Tensor(num_bases, in_channels, out_channels))
+        self.att = Parameter(torch.Tensor(num_relations, num_bases))
+        self.root = Parameter(torch.Tensor(in_channels, out_channels))
 
-
-        # TODO:
-        self.embedding.requires_grad = requires_grad
-
-        # TODO:
+        if bias:
+            self.bias = Parameter(torch.Tensor(out_channels))
+        else:
+            self.register_parameter('bias', None)
 
         self.reset_parameters()
 
     def reset_parameters(self):
+
+        self.att.data.normal_(std=1 / np.sqrt(self.num_bases))
+
+        if self.after_relu:
+            self.root.data.normal_(std=2 / self.in_channels)
+            self.basis.data.normal_(std=2 / self.in_channels)
+
+        else:
+            self.root.data.normal_(std=1 / np.sqrt(self.in_channels))
+            self.basis.data.normal_(std=1 / np.sqrt(self.in_channels))
+
+        if self.bias is not None:
+            self.bias.data.zero_()
+
+    def forward(self, x, edge_index, edge_type, range_list):
+        """"""
+        return self.propagate(
+            edge_index, x=x, edge_type=edge_type, range_list=range_list)
+
+    def message(self, x_j, edge_index, edge_type, range_list):
+        w = torch.matmul(self.att, self.basis.view(self.num_bases, -1))
+        w = w.view(self.num_relations, self.in_channels, self.out_channels)
+        # w = w[edge_type, :, :]
+        # out = torch.bmm(x_j.unsqueeze(1), w).squeeze(-2)
+
+        out_list = []
+        for et in range(range_list.shape[0]):
+            start, end = range_list[et]
+
+            tmp = torch.matmul(x_j[start: end, :], w[et])
+
+            # xxx = x_j[start: end, :]
+            # tmp = checkpoint(torch.matmul, xxx, w[et])
+
+            out_list.append(tmp)
+
+        # TODO: test this
+        return torch.cat(out_list)
+
+    def update(self, aggr_out, x):
+
+        out = aggr_out + torch.matmul(x, self.root)
+
+        if self.bias is not None:
+            out = out + self.bias
+        return out
+
+    def __repr__(self):
+        return '{}({}, {}, num_relations={})'.format(
+            self.__class__.__name__, self.in_channels, self.out_channels,
+            self.num_relations)
+
+
+class homoGraph(Module):
+
+    def __init__(self, in_dim, nhid_list, requires_grad=True, start_graph=False,
+                 multi_relational=False, n_rela=None, n_base=32):
+        super(homoGraph, self).__init__()
+        self.multi_relational = multi_relational
+        self.start_graph = start_graph
+        self.out_dim = nhid_list[-1]
+        self.n_cov = len(nhid_list) - 1
+
+        if start_graph:
+            self.embedding = torch.nn.Parameter(torch.Tensor(in_dim, nhid_list[0]))
+            self.embedding.requires_grad = requires_grad
+            self.reset_parameters()
+
+        if multi_relational:
+            assert n_rela is not None
+            after_relu = [False if i == 0 else True for i in
+                          range(len(nhid_list) - 1)]
+            self.conv_list = torch.nn.ModuleList([
+                myRGCN(nhid_list[i], nhid_list[i + 1], n_rela, n_base, after_relu[i])
+                for i in range(len(nhid_list) - 1)])
+        else:
+            self.conv_list = torch.nn.ModuleList([
+                myGCN(nhid_list[i], nhid_list[i + 1], cached=True)
+                for i in range(len(nhid_list) - 1)])
+
+
+
+    def reset_parameters(self):
         self.embedding.data.normal_()
 
-    def forward(self, x, homo_edge_index, edge_weight):
+    def forward(self, x, homo_edge_index, edge_weight=None, edge_type=None, range_list=None):
         tmp = []
 
-        x = self.embedding
+        if self.start_graph:
+            x = self.embedding
 
         # TODO
         # x = normalize(x)
@@ -126,18 +231,41 @@ class homoGraph(Module):
 
         tmp.append(x)
 
+        # if self.multi_relational:
+        #     assert edge_type is None
+        #     assert range_list is None
+        #     for net in self.conv_list[:-1]:
+        #         x = net(x, homo_edge_index, edge_type, range_list)
+        #         x = F.relu(x, inplace=True)
+        #         tmp.append(x)
+        # else:
+        #     for net in self.conv_list[:-1]:
+        #         x = net(x, homo_edge_index, edge_weight)
+        #
+        #         # TODO
+        #         # x = normalize(x)
+        #         x = F.relu(x, inplace=True)
+        #         # TODO
+        #
+        #         tmp.append(x)
+        #     x = self.conv_list[-1](x, homo_edge_index, edge_weight)
+        #
+        #
+
+        if self.multi_relational:
+            assert edge_type is not None
+            assert range_list is not None
+
         for net in self.conv_list[:-1]:
-            x = net(x, homo_edge_index, edge_weight)
-
-            # TODO
-            # x = normalize(x)
+            x = net(x, homo_edge_index, edge_type, range_list) \
+                if self.multi_relational \
+                else net(x, homo_edge_index, edge_weight)
             x = F.relu(x, inplace=True)
-            # TODO
-
             tmp.append(x)
 
-        x = self.conv_list[-1](x, homo_edge_index, edge_weight)
-
+        x = self.conv_list[-1](x, homo_edge_index, edge_type, range_list) \
+            if self.multi_relational \
+            else self.conv_list[-1](x, homo_edge_index, edge_weight)
 
         # TODO
         # x = normalize(x)
@@ -159,16 +287,18 @@ class homoGraph(Module):
 
 class interGraph(Module):
 
-    def __init__(self, source_dim, target_dim, n_target, target_feat_dim=32):
+    def __init__(self, source_dim, target_dim, n_target, target_feat_dim=32,
+                 requires_grad=True):
         super(interGraph, self).__init__()
         self.source_dim = source_dim
         self.target_dim = target_dim
         self.target_feat_dim = target_feat_dim
         self.n_target = n_target
-        self.target_feat = torch.nn.Parameter(torch.Tensor(n_target, target_feat_dim))
+        self.target_feat = torch.nn.Parameter(
+            torch.Tensor(n_target, target_feat_dim))
 
         # TODO:
-        self.target_feat.requires_grad = False
+        self.target_feat.requires_grad = requires_grad
         # TODO:
 
         self.conv = myGCN(source_dim, target_dim, cached=True)
@@ -178,12 +308,12 @@ class interGraph(Module):
         self.target_feat.data.normal_()
 
     def forward(self, x, inter_edge_index, edge_weight=None):
-
         n_source = x.shape[0]
         tmp = inter_edge_index + 0
         tmp[1, :] += n_source
 
-        x = torch.cat([x, torch.zeros((self.n_target, x.shape[1])).to(x.device)], dim=0)
+        x = torch.cat(
+            [x, torch.zeros((self.n_target, x.shape[1])).to(x.device)], dim=0)
         x = self.conv(x, tmp, edge_weight)[n_source:, :]
         x = F.relu(x)
         x = torch.cat([x, torch.abs(self.target_feat)], dim=1)
