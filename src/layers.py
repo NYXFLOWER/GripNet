@@ -1,8 +1,12 @@
-from src.utils import *
-from torch_geometric.nn.conv import MessagePassing
-from torch_scatter import scatter_add
-from torch_geometric.utils import add_remaining_self_loops
 import torch.nn.functional as F
+
+from pytorch_memlab import profile
+from torch_geometric.utils import add_remaining_self_loops
+from torch_geometric.nn.conv import MessagePassing
+from torch.utils.checkpoint import checkpoint
+from torch_scatter import scatter_add
+
+from src.utils import *
 
 
 class myGCN(MessagePassing):
@@ -225,37 +229,13 @@ class homoGraph(Module):
         if self.start_graph:
             x = self.embedding
 
-        # TODO
-        # x = normalize(x)
-        # TODO
-
         tmp.append(x)
-
-        # if self.multi_relational:
-        #     assert edge_type is None
-        #     assert range_list is None
-        #     for net in self.conv_list[:-1]:
-        #         x = net(x, homo_edge_index, edge_type, range_list)
-        #         x = F.relu(x, inplace=True)
-        #         tmp.append(x)
-        # else:
-        #     for net in self.conv_list[:-1]:
-        #         x = net(x, homo_edge_index, edge_weight)
-        #
-        #         # TODO
-        #         # x = normalize(x)
-        #         x = F.relu(x, inplace=True)
-        #         # TODO
-        #
-        #         tmp.append(x)
-        #     x = self.conv_list[-1](x, homo_edge_index, edge_weight)
-        #
-        #
 
         if self.multi_relational:
             assert edge_type is not None
             assert range_list is not None
 
+        # ---- start: no check point version ----
         for net in self.conv_list[:-1]:
             x = net(x, homo_edge_index, edge_type, range_list) \
                 if self.multi_relational \
@@ -266,6 +246,20 @@ class homoGraph(Module):
         x = self.conv_list[-1](x, homo_edge_index, edge_type, range_list) \
             if self.multi_relational \
             else self.conv_list[-1](x, homo_edge_index, edge_weight)
+        # ---- end: no check point version ----
+
+        # if self.multi_relational:
+        #     for net in self.conv_list[:-1]:
+        #         x = checkpoint(net, x, homo_edge_index, edge_type, range_list)
+        #         x = F.relu(x, inplace=True)
+        #         tmp.append(x)
+        #     x = checkpoint(self.conv_list[-1], x, homo_edge_index, edge_type, range_list)
+        # else:
+        #     for net in self.conv_list[:-1]:
+        #         x = net(x, homo_edge_index, edge_weight)
+        #         x = F.relu(x, inplace=True)
+        #         tmp.append(x)
+        #     x = self.conv_list[-1](x, homo_edge_index, edge_weight)
 
         # TODO
         # x = normalize(x)
