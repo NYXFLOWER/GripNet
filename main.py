@@ -15,9 +15,9 @@ gd = torch.load('data/pose/gene-drug.pt')
 gg = torch.load('data/pose/gene-gene.pt')
 
 # ###########################################################
-dd.n_edge_type = 3
-dd.edge_index = dd.edge_index[:3]
-dd.edge_type = dd.edge_type[:3]
+# dd.n_edge_type = 100
+# dd.edge_index = dd.edge_index[:dd.n_edge_type]
+# dd.edge_type = dd.edge_type[:dd.n_edge_type]
 # ###########################################################
 
 # training and testing data
@@ -60,9 +60,9 @@ class Model(Module):
 
 
 # hyper-parameter setting
-gg_nhids_gcn = [64, 32, 32]
-gd_gcn = 128
-gd_out = 64
+gg_nhids_gcn = [64, 32, 16]
+gd_gcn = 32
+gd_out = 16
 dd_nhids_gcn = [gd_gcn+gd_out, 16]
 learning_rate = 0.01
 
@@ -81,6 +81,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # ###################################
 # Train and Test
 # ###################################
+# @profile
 def train(epoch):
     model.train()
     optimizer.zero_grad()
@@ -92,8 +93,10 @@ def train(epoch):
     pos_index = data.train_idx
     neg_index = typed_negative_sampling(data.train_idx, dd.n_node, data.train_range).to(device)
 
-    pos_score = model.mip(z, pos_index, data.train_et)
-    neg_score = model.mip(z, neg_index, data.train_et)
+    # pos_score = model.mip(z, pos_index, data.train_et)
+    # neg_score = model.mip(z, neg_index, data.train_et)
+    pos_score = checkpoint(model.mip, z, pos_index, data.train_et)
+    neg_score = checkpoint(model.mip, z, neg_index, data.train_et)
 
     pos_loss = -torch.log(pos_score + EPS).mean()
     neg_loss = -torch.log(1 - neg_score + EPS).mean()
@@ -157,7 +160,7 @@ def test(z):
 # if __name__ == '__main__':
 # hhh
 EPOCH_NUM = int(sys.argv[-1])
-out_dir = './out/pose_toy_3/'
+out_dir = './out/pose/'
 print('model training ...')
 
 # train and test
@@ -186,8 +189,8 @@ if device == 'cuda':
     out = out.to('cpu')
 
 # save model and record
-torch.save(model.state_dict(), out_dir + name + '-model.pt')
-torch.save(out, out_dir + name + '-record.pt')
+torch.save(model.state_dict(), out_dir + str(EPOCH_NUM) + name + '-model.pt')
+torch.save(out, out_dir + str(EPOCH_NUM) + name + '-record.pt')
 
 # save record to csv
 last_record = out.test_record[EPOCH_NUM-1].T
@@ -195,6 +198,6 @@ et_index = np.array(range(data.test_range.shape[0]), dtype=int).reshape(-1, 1)
 combine = np.concatenate([et_index, np.array(data.n_edges_per_type, dtype=int).reshape(-1, 1), last_record], axis=1)
 df = pd.DataFrame(combine, columns=['side_effect', 'n_instance', 'auprc', 'auroc', 'ap'])
 df.astype({'side_effect': 'int32'})
-df.to_csv(out_dir + name + '-record.csv', index=False)
+df.to_csv(out_dir + str(EPOCH_NUM) + name + '-record.csv', index=False)
 
 print('The trained model and the result record have been saved!')
