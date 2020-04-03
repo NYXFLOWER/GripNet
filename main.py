@@ -14,9 +14,11 @@ dd = torch.load('data/pose/drug-drug.pt')
 gd = torch.load('data/pose/gene-drug.pt')
 gg = torch.load('data/pose/gene-gene.pt')
 
+# ###########################################################
 dd.n_edge_type = 3
 dd.edge_index = dd.edge_index[:3]
 dd.edge_type = dd.edge_type[:3]
+# ###########################################################
 
 # training and testing data
 keys = ('train_idx', 'train_et', 'train_range', 'test_idx', 'test_et', 'test_range')
@@ -26,14 +28,19 @@ data = Data.from_dict({k: v for k, v in zip(keys, values)})
 # node feature vector initialization
 data.g_feat = sparse_id(gg.n_node)
 data.d_feat = sparse_id(dd.n_node)
-data.edge_weight = torch.ones((gg.n_edge))
-data.train_record, data.test_record, data.train_out, data.test_out = {}, {}, {}, {}
+data.edge_weight = torch.ones(gg.n_edge)
+data.n_edges_per_type = [(i[1] - i[0]).data.tolist() for i in data.test_range]
+
+
+keys = ('train_record', 'test_record', 'train_out', 'test_out')
+out = Data.from_dict({k: {} for k in keys})
 
 # sent to device
 device_name = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(device_name)
 device = torch.device(device_name)
 data = data.to(device)
+out = out.to(device)
 gg, gd, dd = gg.to(device), gd.to(device), dd.to(device)
 
 
@@ -110,9 +117,9 @@ def train(epoch):
 
         record[0, i], record[1, i], record[2, i] = auprc_auroc_ap(target, score)
 
-    data.train_record[epoch] = record
+    out.train_record[epoch] = record
     [auprc, auroc, ap] = record.mean(axis=1)
-    data.train_out[epoch] = [auprc, auroc, ap]
+    out.train_out[epoch] = [auprc, auroc, ap]
 
     print('{:3d}   loss:{:0.4f}   auprc:{:0.4f}   auroc:{:0.4f}   ap@50:{:0.4f}'
           .format(epoch, loss.tolist(), auprc, auroc, ap))
@@ -150,7 +157,7 @@ def test(z):
 # if __name__ == '__main__':
 # hhh
 EPOCH_NUM = int(sys.argv[-1])
-out_dir = './out/pose/'
+out_dir = './out/pose_toy_3/'
 print('model training ...')
 
 # train and test
@@ -167,19 +174,27 @@ for epoch in range(EPOCH_NUM):
         .format(epoch, loss.tolist(), auprc, auroc, ap,
                 (time.time() - time_begin)))
 
-    data.test_record[epoch] = record_te
-    data.test_out[epoch] = [auprc, auroc, ap]
+    out.test_record[epoch] = record_te
+    out.test_out[epoch] = [auprc, auroc, ap]
 
 # model name
 name = '{}-{}-{}-{}-{}'.format(gg_nhids_gcn, gd_gcn, gd_out, gd_out, dd_nhids_gcn, learning_rate)
 
-# save model
-torch.save(model.to('cpu').state_dict(), out_dir + name + '-model.pt')
+if device == 'cuda':
+    data = data.to('cpu')
+    model = model.to('cpu')
+    out = out.to('cpu')
 
-# save record
-last_record = data.test_record[EPOCH_NUM-1].T
-et_index = np.array(data.final_et_list).reshape(-1, 1)
-combine = np.concatenate([et_index, np.array(data.n_edges_per_type).reshape(-1, 1), last_record], axis=1)
+# save model and record
+torch.save(model.state_dict(), out_dir + name + '-model.pt')
+torch.save(out, out_dir + name + '-record.pt')
+
+# save record to csv
+last_record = out.test_record[EPOCH_NUM-1].T
+et_index = np.array(range(data.test_range.shape[0]), dtype=int).reshape(-1, 1)
+combine = np.concatenate([et_index, np.array(data.n_edges_per_type, dtype=int).reshape(-1, 1), last_record], axis=1)
 df = pd.DataFrame(combine, columns=['side_effect', 'n_instance', 'auprc', 'auroc', 'ap'])
 df.astype({'side_effect': 'int32'})
 df.to_csv(out_dir + name + '-record.csv', index=False)
+
+print('The trained model and the result record have been saved!')
