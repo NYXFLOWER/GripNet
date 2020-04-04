@@ -1,4 +1,4 @@
-# MIP
+# MIP arch for integreting multiple graph
 
 Node Representation Learning and Interpreting via Multi-graph Information Propagation
 
@@ -7,6 +7,8 @@ Node Representation Learning and Interpreting via Multi-graph Information Propag
 Sometimes our data is naturally presented in the form of multiple interconnected graphs, like diseas-protein-drug graphs. How to learn explainable node representation when the data is a set of interconnected graphs is the core of this project. 
 
 In other words, our **task** is to learn meaningful node representation for the downstream machine task, like link prediction and node classification.
+
+use more info and get better performance. Not easy.  with the size of data increasing, two models may have different improvement.
 
 ### 2. Model = predictor(encoder, decoder) + explainer
 
