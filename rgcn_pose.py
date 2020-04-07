@@ -2,7 +2,7 @@ from src.layers import *
 from src.decoder import multiInnerProductDecoder
 from data.utils import process_edge_multirelational
 from torch_geometric.data import Data
-import sys, time
+import sys, time, os
 import pandas as pd
 
 
@@ -10,42 +10,181 @@ import pandas as pd
 # data processing
 # ###################################
 # load data
-dd = torch.load('data/pose/drug-drug.pt')
-gd = torch.load('data/pose/gene-drug.pt')
-gg = torch.load('data/pose/gene-gene.pt')
+data = torch.load('./data/pose_comb_all.pt')
+
+# node feature vector initialization
+data.feat = sparse_id(data.n_node)
+data.n_edges_per_type = [(i[1] - i[0]).data.tolist() for i in data.test_range]
+
+# output dictionary
+keys = ('train_record', 'test_record', 'train_out', 'test_out')
+out = Data.from_dict({k: {} for k in keys})
+
+# sent to device
+device_name = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(device_name)
+device = torch.device(device_name)
+data = data.to(device)
+out = out.to(device)
+
 
 # ###################################
-# dataset integration
+# Model
 # ###################################
-# add dd graph
-index = dd.edge_index.copy()
-ttt = dd.edge_type.copy()
-# add gg graph
-tmp = gg.edge_index + dd.n_node
-index.append(tmp)
-tmp = torch.tensor([len(index)] * gg.n_edge)
-ttt.append(tmp)
-# add gd graph
-tmp = gd.edge_index
-tmp[0] = tmp[0] + dd.n_node
-index.append(tmp)
-tmp = torch.tensor([len(index)] * gd.n_edge)
-ttt.append(tmp)
+# hyper-parameter setting
+r1_in_dim, r1_out_dim, r2_out_dim = 64, 32, 16
+n_relations, n_bases = data.n_edge_type, 16
+learning_rate = 0.01
 
-data = Data.from_dict({
-    'n_node': dd.n_node + gg.n_node,
-    'n_node_type': 2,
-    'n_edge': dd.n_edge + gd.n_edge + gg.n_edge,
-    'n_edge_type': dd.n_edge_type + gd.n_edge_type + gg.n_edge_type,
-    'node_type': [('drug', 'drug'), ('gene', 'drug'), ('gene', 'gene')],
 
-    'edge_index': index,
-    'edge_type': ttt,
-    'edge_weight': None,
+# model and initialization
+class Model(Module):
+    def forward(self, *input):
+        pass
 
-    'description': 'reindex node [drug]+[gene]'
-})
+    def __init__(self, r1, r2, dmt):
+        super(Model, self).__init__()
+        self.embedding = Parameter(torch.Tensor(data.n_node, r1_in_dim))
+        self.embedding.data.normal_()
+        self.rgcn1 = r1
+        self.rgcn2 = r2
+        self.dmt = dmt
 
-torch.save(data, './data/pose_comb.pt')
+
+model = Model(
+    myRGCN(r1_in_dim, r1_out_dim, n_relations, n_bases, after_relu=False),
+    myRGCN(r1_out_dim, r2_out_dim, n_relations, n_bases, after_relu=True),
+    multiInnerProductDecoder(r2_out_dim, data.n_edge_type)
+).to(device)
+
+# optimizer
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+
+# ###################################
+# Train and Test
+# ###################################
+@profile
+def train(epoch):
+    model.train()
+    optimizer.zero_grad()
+
+    z = torch.matmul(data.feat, model.embedding)
+    z = model.rgcn1(z, data.train_idx, data.train_et, data.train_range)
+    z = model.rgcn2(z, data.train_idx, data.train_et, data.train_range)
+
+    pos_index = data.train_idx
+    neg_index = typed_negative_sampling(data.train_idx, data.n_node, data.train_range).to(device)
+
+    pos_score = model.dmt(z, pos_index, data.train_et)
+    neg_score = model.dmt(z, neg_index, data.train_et)
+    # pos_score = checkpoint(model.dmt, z, pos_index, data.train_et)
+    # neg_score = checkpoint(model.dmt, z, neg_index, data.train_et)
+
+    pos_loss = -torch.log(pos_score + EPS).mean()
+    neg_loss = -torch.log(1 - neg_score + EPS).mean()
+    loss = pos_loss + neg_loss
+
+    loss.backward()
+
+    optimizer.step()
+
+    record = np.zeros((3, data.n_edge_type))  # auprc, auroc, ap
+    for i in range(data.train_range.shape[0] - 2):
+        [start, end] = data.train_range[i]
+        p_s = pos_score[start: end]
+        n_s = neg_score[start: end]
+
+        pos_target = torch.ones(p_s.shape[0])
+        neg_target = torch.zeros(n_s.shape[0])
+
+        score = torch.cat([p_s, n_s])
+        target = torch.cat([pos_target, neg_target])
+
+        record[0, i], record[1, i], record[2, i] = auprc_auroc_ap(target, score)
+
+    out.train_record[epoch] = record
+    [auprc, auroc, ap] = record.mean(axis=1)
+    out.train_out[epoch] = [auprc, auroc, ap]
+
+    print('{:3d}   loss:{:0.4f}   auprc:{:0.4f}   auroc:{:0.4f}   ap@50:{:0.4f}'
+          .format(epoch, loss.tolist(), auprc, auroc, ap))
+
+    return z, loss
+
+
+test_neg_index = typed_negative_sampling(data.test_idx, data.n_node, data.test_range).to(device)
+
+
+def test(z):
+    model.eval()
+
+    record = np.zeros((3, data.n_edge_type))
+
+    pos_score = model.dmt(z, data.test_idx, data.test_et)
+    neg_score = model.dmt(z, test_neg_index, data.test_et)
+    for i in range(data.test_range.shape[0] - 2):
+        [start, end] = data.test_range[i]
+        p_s = pos_score[start: end]
+        n_s = neg_score[start: end]
+
+        pos_target = torch.ones(p_s.shape[0])
+        neg_target = torch.zeros(n_s.shape[0])
+
+        score = torch.cat([p_s, n_s])
+        target = torch.cat([pos_target, neg_target])
+
+        record[0, i], record[1, i], record[2, i] = auprc_auroc_ap(target, score)
+
+    return record
+
+
+# if __name__ == '__main__':
+# hhh
+EPOCH_NUM = int(sys.argv[-1])
+out_dir = './out/pose_rgcn_all/'
+if not os.path.exists(out_dir):
+    os.makedirs(out_dir)
+
+print('model training ...')
+
+# train and test
+for epoch in range(EPOCH_NUM):
+    time_begin = time.time()
+
+    z, loss = train(epoch)
+
+    record_te = test(z)
+    [auprc, auroc, ap] = record_te.mean(axis=1)
+
+    print(
+        '{:3d}   loss:{:0.4f}   auprc:{:0.4f}   auroc:{:0.4f}   ap@50:{:0.4f}    time:{:0.1f}\n'
+        .format(epoch, loss.tolist(), auprc, auroc, ap,
+                (time.time() - time_begin)))
+
+    out.test_record[epoch] = record_te
+    out.test_out[epoch] = [auprc, auroc, ap]
+
+# model name
+name = '-{}-{}-{}-{}-{}'.format(r1_in_dim, r1_out_dim, r2_out_dim, n_bases, learning_rate)
+
+if device == 'cuda':
+    data = data.to('cpu')
+    model = model.to('cpu')
+    out = out.to('cpu')
+
+# save model and record
+torch.save(model.state_dict(), out_dir + str(EPOCH_NUM) + name + '-model.pt')
+torch.save(out, out_dir + str(EPOCH_NUM) + name + '-record.pt')
+
+# save record to csv
+last_record = out.test_record[EPOCH_NUM-1].T
+et_index = np.array(range(data.test_range.shape[0]), dtype=int).reshape(-1, 1)
+combine = np.concatenate([et_index, np.array(data.n_edges_per_type, dtype=int).reshape(-1, 1), last_record], axis=1)
+df = pd.DataFrame(combine, columns=['side_effect', 'n_instance', 'auprc', 'auroc', 'ap'])
+df.astype({'side_effect': 'int32'})
+df.to_csv(out_dir + str(EPOCH_NUM) + name + '-record.csv', index=False)
+
+print('The trained model and the result record have been saved!')
 
 
