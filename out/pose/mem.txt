@@ -1,0 +1,47 @@
+Line # Max usage   Peak usage diff max diff peak  Line Contents
+===============================================================
+    84                                           @profile
+    85                                           def train(epoch):
+    86   130.27M      304.00M   72.26M  244.00M      model.train()
+    87   130.27M      304.00M    0.00B    0.00B      optimizer.zero_grad()
+    88
+    89   144.25M      680.00M   13.98M  376.00M      z = model.gg(data.g_feat, gg.edge_index, edge_weight=data.edge_weight)
+    90   154.05M      304.00M    9.80M -376.00M      z = model.gd(z, gd.edge_index)
+    91   786.04M      974.00M  631.99M  670.00M      z = model.dd(z, data.train_idx, edge_type=data.train_et, range_list=data.train_range)
+    92
+    93   786.04M      934.00M    0.00B  -40.00M      pos_index = data.train_idx
+    94   799.15M      948.00M   13.11M   14.00M      neg_index = typed_negative_sampling(data.train_idx, dd.n_node, data.train_range).to(device)
+    95
+    96     3.45G        4.24G    2.67G    3.32G      pos_score = model.mip(z, pos_index, data.train_et)
+    97     6.12G        6.91G    2.67G    2.66G      neg_score = model.mip(z, neg_index, data.train_et)
+    98
+    99     6.12G        6.24G    3.40M -682.00M      pos_loss = -torch.log(pos_score + EPS).mean()
+   100     6.12G        6.24G    3.28M    0.00B      neg_loss = -torch.log(1 - neg_score + EPS).mean()
+   101     6.12G        6.24G  512.00B    0.00B      loss = pos_loss + neg_loss
+   102
+   103   151.16M        7.57G   -5.97G    1.33G      loss.backward()
+   104
+   105   151.16M      306.00M    0.00B   -7.28G      optimizer.step()
+   106
+   107   151.16M      304.00M    0.00B   -2.00M      record = np.zeros((3, dd.n_edge_type))  # auprc, auroc, ap
+   108   151.35M      304.00M  194.50K    0.00B      for i in range(data.train_range.shape[0]):
+   109   151.35M      304.00M    0.00B    0.00B          [start, end] = data.train_range[i]
+   110   151.35M      304.00M    0.00B    0.00B          p_s = pos_score[start: end]
+   111   151.35M      304.00M    0.00B    0.00B          n_s = neg_score[start: end]
+   112
+   113   151.35M      304.00M    0.00B    0.00B          pos_target = torch.ones(p_s.shape[0])
+   114   151.35M      304.00M    0.00B    0.00B          neg_target = torch.zeros(n_s.shape[0])
+   115
+   116   151.35M      304.00M    0.00B    0.00B          score = torch.cat([p_s, n_s])
+   117   151.35M      304.00M    0.00B    0.00B          target = torch.cat([pos_target, neg_target])
+   118
+   119   151.35M      304.00M    0.00B    0.00B          record[0, i], record[1, i], record[2, i] = auprc_auroc_ap(target, score)
+   120
+   121   151.23M      304.00M -132.50K    0.00B      out.train_record[epoch] = record
+   122   151.23M      304.00M    0.00B    0.00B      [auprc, auroc, ap] = record.mean(axis=1)
+   123   151.23M      304.00M    0.00B    0.00B      out.train_out[epoch] = [auprc, auroc, ap]
+   124
+   125   151.23M      304.00M    0.00B    0.00B      print('{:3d}   loss:{:0.4f}   auprc:{:0.4f}   auroc:{:0.4f}   ap@50:{:0.4f}'
+   126   151.23M      304.00M    0.00B    0.00B            .format(epoch, loss.tolist(), auprc, auroc, ap))
+   127   130.27M      912.00M  -20.96M  608.00M
+   128   151.23M      304.00M    0.00B    0.00B      return z, loss
