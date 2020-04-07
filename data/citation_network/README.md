@@ -5,5 +5,5 @@ The citation netwrok data is extracted from [Aminer](https://aminer.org/aminerne
 | file               | n_node   | n_edge                   | node_type                                     |
 | ------------------ | -------- | -------------| --------------- |
 | author-author.pt   | 27155 | 108330  | (author, author) |
-| paper-author.pt    | 52303 | 17040+27155   | (paper, author)  |
+| paper-author.pt    | 17040+27155 |  52303  | (paper, author)  |
 | paper-paper.pt     | 109502| 46707   | (paper, paper)   |
