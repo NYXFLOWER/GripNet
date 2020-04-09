@@ -2,7 +2,9 @@ from torch_geometric.data import Data
 from data.utils import process_edge_multirelational
 import pickle
 import torch
-
+import numpy as np
+torch.manual_seed(1111)
+np.random.seed(1111)
 
 # ###################################
 # MIP-pose dataset
@@ -104,7 +106,9 @@ values = process_edge_multirelational(index, p=0.9)
 # construction
 data = Data.from_dict({
     'n_node': dd.n_node + gg.n_node,
-    'n_node_type': 2,
+    'n_drug': dd.n_node,
+    'n_gene': gg.n_node,
+    'n_node_typed': 2,
     'n_edge': dd.n_edge + gd.n_edge + gg.n_edge,
     'n_edge_type': dd.n_edge_type + gd.n_edge_type + gg.n_edge_type,
     'node_type': [('drug', 'drug'), ('gene', 'drug'), ('gene', 'gene')],
@@ -122,6 +126,18 @@ data = Data.from_dict({
 
     'description': 'reindex node [drug]+[gene]'
 })
+
+tmp = data.train_idx[:, data.train_range[-1][0]:data.train_range[-1][1]].shape[1]
+tmp = -int(tmp/2)
+data.train_idx = data.train_idx[:, :tmp]
+data.train_et = data.train_et[:tmp]
+data.train_range[-1][1] += tmp
+
+tmp = data.test_idx[:, data.test_range[-1][0]:data.test_range[-1][1]].shape[1]
+tmp = -int(tmp/2)
+data.test_idx = data.test_idx[:, :tmp]
+data.test_et = data.test_et[:tmp]
+data.test_range[-1][1] += tmp
 
 torch.save(data, './data/pose_comb_all.pt')
 
