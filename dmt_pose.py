@@ -58,7 +58,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # ###################################
 # Train and Test
 # ###################################
-# @profile
+@profile
 def train(epoch):
     model.train()
     optimizer.zero_grad()
@@ -68,9 +68,9 @@ def train(epoch):
     pos_index = data.train_idx
     neg_index = typed_negative_sampling(data.train_idx, data.n_node, data.train_range).to(device)
 
-    # tmp_index = typed_negative_sampling(data.train_idx, data.n_drug,
-    #                                     data.train_range[:-2]).to(device)
-    # neg_index = torch.cat([tmp_index, neg_index[:, tmp_index.shape[1]:]], dim=1)
+    tmp_index = typed_negative_sampling(data.train_idx, data.n_drug,
+                                        data.train_range[:-2]).to(device)
+    neg_index = torch.cat([tmp_index, neg_index[:, tmp_index.shape[1]:]], dim=1)
 
     pos_score = model.dmt(z, pos_index, data.train_et)
     neg_score = model.dmt(z, neg_index, data.train_et)
@@ -87,9 +87,9 @@ def train(epoch):
 
     record = np.zeros((3, data.n_edge_type))  # auprc, auroc, ap
 
-    model.eval()
-    neg_index = typed_negative_sampling(data.train_idx, data.n_drug, data.train_range[:-2]).to(device)
-    neg_score = model.dmt(z, neg_index, data.train_et[:neg_index.shape[1]])
+    # model.eval()
+    # neg_index = typed_negative_sampling(data.train_idx, data.n_drug, data.train_range[:-2]).to(device)
+    # neg_score = model.dmt(z, neg_index, data.train_et[:neg_index.shape[1]])
 
     for i in range(data.train_range.shape[0] - 2):
         [start, end] = data.train_range[i]
