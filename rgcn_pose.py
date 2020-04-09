@@ -1,5 +1,5 @@
 from src.layers import *
-from src.decoder import multiInnerProductDecoder
+from src.decoder import multiRelaInnerProductDecoder
 from data.utils import process_edge_multirelational
 from torch_geometric.data import Data
 import sys, time, os
@@ -54,7 +54,7 @@ class Model(Module):
 model = Model(
     myRGCN(r1_in_dim, r1_out_dim, n_relations, n_bases, after_relu=False),
     myRGCN(r1_out_dim, r2_out_dim, n_relations, n_bases, after_relu=True),
-    multiInnerProductDecoder(r2_out_dim, data.n_edge_type)
+    multiRelaInnerProductDecoder(r2_out_dim, data.n_edge_type)
 ).to(device)
 
 # optimizer
@@ -74,7 +74,11 @@ def train(epoch):
     z = model.rgcn2(z, data.train_idx, data.train_et, data.train_range)
 
     pos_index = data.train_idx
+
     neg_index = typed_negative_sampling(data.train_idx, data.n_node, data.train_range).to(device)
+    tmp_index = typed_negative_sampling(data.train_idx, data.n_drug,
+                                        data.train_range[:-2]).to(device)
+    neg_index = torch.cat([tmp_index, neg_index[:, tmp_index.shape[1]:]], dim=1)
 
     pos_score = model.dmt(z, pos_index, data.train_et)
     neg_score = model.dmt(z, neg_index, data.train_et)
@@ -90,6 +94,11 @@ def train(epoch):
     optimizer.step()
 
     record = np.zeros((3, data.n_edge_type))  # auprc, auroc, ap
+
+    # model.eval()
+    # neg_index = typed_negative_sampling(data.train_idx, data.n_drug, data.train_range[:-2]).to(device)
+    # neg_score = model.dmt(z, neg_index, data.train_et[:neg_index.shape[1]])
+
     for i in range(data.train_range.shape[0] - 2):
         [start, end] = data.train_range[i]
         p_s = pos_score[start: end]
@@ -113,7 +122,7 @@ def train(epoch):
     return z, loss
 
 
-test_neg_index = typed_negative_sampling(data.test_idx, data.n_node, data.test_range).to(device)
+test_neg_index = typed_negative_sampling(data.test_idx, data.n_drug, data.test_range[:-2]).to(device)
 
 
 def test(z):
@@ -122,7 +131,7 @@ def test(z):
     record = np.zeros((3, data.n_edge_type))
 
     pos_score = model.dmt(z, data.test_idx, data.test_et)
-    neg_score = model.dmt(z, test_neg_index, data.test_et)
+    neg_score = model.dmt(z, test_neg_index, data.test_et[:test_neg_index.shape[1]])
     for i in range(data.test_range.shape[0] - 2):
         [start, end] = data.test_range[i]
         p_s = pos_score[start: end]
