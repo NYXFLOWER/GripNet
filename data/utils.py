@@ -21,12 +21,13 @@ def to_bidirection(edge_index, edge_type=None):
         return torch.cat([edge_index, tmp], dim=1), torch.cat([edge_type, edge_type])
 
 
-def get_range_list(edge_list):
+def get_range_list(edge_list, is_node=False):
+    idx = 0 if is_node else 1
     tmp = []
     s = 0
     for i in edge_list:
-        tmp.append((s, s + i.shape[1]))
-        s += i.shape[1]
+        tmp.append((s, s + i.shape[idx]))
+        s += i.shape[idx]
     return torch.tensor(tmp)
 
 
@@ -79,4 +80,41 @@ def process_edge_multirelational(raw_edge_list, p=0.9):
 
     return train_edge_idx, train_et, train_range, test_edge_idx, test_et, test_range
 
+
+def process_node(raw_nodes, p=0.9):
+    rd = np.random.binomial(1, 0.9, len(raw_nodes))
+    train_mask = rd.nonzero()[0]
+    test_mask = (1 - rd).nonzero()[0]
+
+    train_indices = raw_nodes[train_mask]
+    test_indices = raw_nodes[test_mask]
+
+    return train_indices, test_indices
+
+
+def process_node_multilabel(raw_nodes_list):
+    train_list = []
+    test_list = []
+    train_label_list = []
+    test_label_list = []
+
+    for i, idx in enumerate(raw_nodes_list):
+        train_indices, test_indices = process_node(idx)
+
+        train_list.append(train_indices)
+        test_list.append(test_indices)
+
+        train_label_list.append(torch.tensor([i]*train_indices.shape[0], dtype=torch.long))
+        test_label_list.append(torch.tensor([i]*test_indices.shape[0], dtype=torch.long))
+
+    train_range = get_range_list(train_list, is_node=True)
+    test_range = get_range_list(test_list, is_node=True)
+
+    train_node_idx = torch.cat(train_list)
+    test_node_idx = torch.cat(test_list)
+
+    train_node_class = torch.cat(train_label_list)
+    test_node_class = torch.cat(test_label_list)
+
+    return train_node_idx, train_node_class, train_range, test_node_idx, test_node_class, test_range
 
