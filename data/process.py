@@ -1,5 +1,5 @@
 from torch_geometric.data import Data
-from data.utils import process_edge_multirelational
+from data.utils import process_edge_multirelational, process_node_multilabel
 import pickle
 import torch
 import numpy as np
@@ -139,7 +139,91 @@ data.test_idx = data.test_idx[:, :tmp]
 data.test_et = data.test_et[:tmp]
 data.test_range[-1][1] += tmp
 
-torch.save(data, './data/pose_comb_all.pt')
+torch.save(data, './data/pose-1-combl.pt')
 
 
+# ###################################
+# citation network dataset
+# ###################################
+aa = torch.load("data/citation_network/author-author.pt")
+pa = torch.load("data/citation_network/paper-author.pt")
+pp = torch.load("data/citation_network/paper-paper.pt")
+
+# tmp = aa.node_label
+# label = [[] for i in range(aa.n_node_type)]
+# for idx, lab in tmp:
+#     label[lab].append(idx)
+# label = [torch.tensor(i, dtype=torch.int) for i in label]
+# aa.typed_node_label = label
+# torch.save(aa, "data/citation_network/author-author.pt")
+
+data = Data()
+data.train_idx, data.train_label, data.train_range, data.test_idx, data.test_label, data.test_range = process_node_multilabel(aa.typed_node_label)
+
+data.aa_edge_index, data.pp_edge_index, data.pa_edge_index = aa.edge_index, pp.edge_index, pa.edge_index
+data.a_node_label = aa.typed_node_label
+data.n_a_node = len(set(aa.edge_index.unique().tolist()) | set(pa.edge_index[1].unique().tolist()))
+data.n_a_node_type = aa.n_node_type
+data.n_aa_edge = aa.n_edge
+data.n_aa_edge_type = 1
+
+data.n_p_node = pp.n_node
+
+un = pa.edge_index[1].unique()
+tmp = []
+for i in range(aa.edge_index.shape[1]):
+    x, y = aa.edge_index[:, i].tolist()
+    if x in un and y in un:
+        tmp.append([x, y])
+
+tmp = np.array(tmp).reshape((2, -1))
+data.aa_edge_index = torch.tensor(tmp)
+
+no_connect_a = set(data.pa_edge_index[1].unique().tolist()) - set(data.aa_edge_index.unique().tolist())
+data.a_no_connect = no_connect_a
+
+no_connect_p = set(data.pp_edge_index.unique().tolist()) - set(data.pa_edge_index[0].unique().tolist())
+data.p_no_connect = no_connect_p
+
+data.n_p_node = 46704
+data.n_pp_edge = pp.edge_index.shape[1]
+data.n_pa_edge = pa.edge_index.shape[1]
+
+torch.save(data, "./data/auta-0.pt")
+
+
+# ###################################
+# pose-0
+# ###################################
+data = torch.load("./datasets/pose-2.pt")
+g_node = set(data.gd_edge_index[0].unique().tolist())
+data.n_g_node = len(g_node)
+
+pp = data.gg_edge_index.numpy()
+tmp = []
+for i in range(pp.shape[1]):
+    x, y = pp[:, i]
+    if x in g_node and y in g_node:
+        tmp.append([x, y])
+data.gg_edge_index = torch.tensor(tmp, dtype=torch.int).reshape((2, -1))
+data.n_gg_edge = data.gg_edge_index.shape[1]
+
+with open('./datasets/protein-map.pkl', 'rb') as f:
+    gmap = pickle.load(f)
+gmap = {v:k for k,v in gmap.items()}
+mmp = dict()
+data.g_idx_to_id = dict()
+for i, n in enumerate(g_node):
+    mmp[n] = i
+    data.g_idx_to_id[i] = gmap[n]
+
+tmp = []
+for i in range(data.gd_edge_index.shape[1]):
+    data.gd_edge_index[0, i] = mmp[data.gd_edge_index[0, i].tolist()]
+
+for i in range(data.gg_edge_index.shape[1]):
+    data.gg_edge_index[0, i] = mmp[data.gg_edge_index[0, i].tolist()]
+    data.gg_edge_index[1, i] = mmp[data.gg_edge_index[1, i].tolist()]
+
+torch.save(data,  './datasets/pose-0.pt')
 
