@@ -29,7 +29,11 @@ class multiClassInnerProductDecoder(Module):
 
     def forward(self, z, node_list, node_label, sigmoid=True):
         value = (z[node_list] * self.weight[node_label]).sum(dim=1)
-        return torch.sigmoid(value) if sigmoid else value
+
+        pred = torch.matmul(z[node_list], self.weight.reshape(self.in_dim, self.num_class))
+        pred = torch.sigmoid(pred) if sigmoid else value
+
+        return torch.sigmoid(value) if sigmoid else value, torch.argmax(pred, dim=1)
 
     def reset_parameters(self):
         self.weight.data.normal_()
