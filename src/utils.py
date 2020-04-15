@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import pickle
 from sklearn import metrics
+from sklearn.metrics import accuracy_score
 from torch.nn import Parameter, Module
 
 
@@ -35,6 +36,21 @@ def auprc_auroc_ap(target_tensor, score_tensor):
     return auprc, auroc, ap
 
 
+def micro_macro(target_tensor, score_tensor):
+    y = target_tensor.detach().cpu().numpy()
+    pred = score_tensor.detach().cpu().numpy()
+    micro, macro = metrics.f1_score(y, pred, average='micro'), metrics.f1_score(y, pred, average='macro')
+
+    return micro, macro
+
+
+def acc(target_tensor, score_tensor):
+    y = target_tensor.detach().cpu().numpy()
+    pred = score_tensor.detach().cpu().numpy()
+    return accuracy_score(y, pred > 0.5)
+
+
+
 def load_graph(pt_file_path='./sample_graph.pt'):
     """
     Parameters
@@ -63,7 +79,7 @@ def load_graph(pt_file_path='./sample_graph.pt'):
     return torch.load(pt_file_path)
 
 
-def load_node_idx_to_id_dict(pkl_file_path='./data/pose/map.pkl'):
+def load_node_idx_to_id_dict(pkl_file_path='./data/pose-1/map.pkl'):
     """
     Parameters:
     -----------
