@@ -47,7 +47,7 @@ def micro_macro(target_tensor, score_tensor):
 def acc(target_tensor, score_tensor):
     y = target_tensor.detach().cpu().numpy()
     pred = score_tensor.detach().cpu().numpy()
-    return accuracy_score(y, pred > 0.5)
+    return accuracy_score(y, pred)
 
 
 

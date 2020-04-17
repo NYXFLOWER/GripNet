@@ -1,4 +1,6 @@
 from src.utils import *
+torch.manual_seed(1111)
+np.random.seed(1111)
 
 
 class multiRelaInnerProductDecoder(Module):
@@ -23,17 +25,20 @@ class multiClassInnerProductDecoder(Module):
         super(multiClassInnerProductDecoder, self).__init__()
         self.num_class = num_class
         self.in_dim = in_dim
-        self.weight = Parameter(torch.Tensor(num_class, in_dim))
+        self.weight = Parameter(torch.Tensor(self.in_dim, self.num_class))
 
         self.reset_parameters()
 
-    def forward(self, z, node_list, node_label, sigmoid=True):
-        value = (z[node_list] * self.weight[node_label]).sum(dim=1)
+    def forward(self, z, node_list, softmax=True):
+        # value = (z[node_list] * self.weight[node_label]).sum(dim=1)
+        # value = torch.sigmoid(value) if sigmoid else value
 
-        pred = torch.matmul(z[node_list], self.weight.reshape(self.in_dim, self.num_class))
-        pred = torch.sigmoid(pred) if sigmoid else value
+        pred = torch.matmul(z[node_list], self.weight)
+        pred = torch.softmax(pred, dim=1) if softmax else pred
 
-        return torch.sigmoid(value) if sigmoid else value, torch.argmax(pred, dim=1)
+        return pred
 
     def reset_parameters(self):
-        self.weight.data.normal_()
+        stdv = np.sqrt(6.0 / (self.weight.size(-2) + self.weight.size(-1)))
+        self.weight.data.uniform_(-stdv, stdv)
+        # self.weight.data.normal_()

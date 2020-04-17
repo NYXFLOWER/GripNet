@@ -9,6 +9,10 @@ from torch_scatter import scatter_add
 from src.utils import *
 
 
+torch.manual_seed(1111)
+np.random.seed(1111)
+
+
 class myGCN(MessagePassing):
 
     def __init__(self,
@@ -217,7 +221,6 @@ class homoGraph(Module):
             self.conv_list = torch.nn.ModuleList([
                 myGCN(nhid_list[i], nhid_list[i + 1], cached=True)
                 for i in range(len(nhid_list) - 1)])
-
 
 
     def reset_parameters(self):

@@ -4,13 +4,15 @@ from torch_geometric.data import Data
 import sys, time, os
 import pandas as pd
 
+torch.manual_seed(1111)
+np.random.seed(1111)
 
 
 # ###################################
 # data processing
 # ###################################
 # load data
-ddd = int(sys.argv[-2])
+ddd = int(sys.argv[1])
 data = torch.load('datasets-auta/auta-{}.pt'.format(ddd))
 
 # output path
@@ -27,7 +29,7 @@ data.n_node_per_type = [(i[1] - i[0]).data.tolist() for i in data.test_range]
 
 
 # output dictionary
-keys = ('train_record', 'test_record', 'train_out', 'test_out')
+keys = ('train_out', 'test_out')
 out = Data.from_dict({k: {} for k in keys})
 
 # sent to device
@@ -54,10 +56,10 @@ class Model(Module):
 
 
 # hyper-parameter setting
-pp_nhids_gcn = [64, 32, 32]
-pa_gcn = 32
-pa_out = 32
-aa_nhids_gcn = [pa_gcn + pa_out, 16, 16]
+pp_nhids_gcn = [int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5])]
+pa_gcn = int(sys.argv[6])
+pa_out = int(sys.argv[7])
+aa_nhids_gcn = [pa_gcn + pa_out, int(sys.argv[8]), int(sys.argv[9])]
 learning_rate = 0.01
 
 # model init
@@ -84,26 +86,19 @@ def train(epoch):
     z = model.pa(z, data.pa_edge_idx)
     z = model.aa(z, data.aa_edge_idx, edge_weight=data.aa_edge_weight)
 
-    score, pred = model.mcip(z, data.train_node_idx, data.train_node_class)
+    score = model.mcip(z, data.train_node_idx)
+    pred = torch.argmax(score, dim=1)
 
-    loss = -torch.log(score + EPS).mean()
+    loss = -torch.log(score[range(score.shape[0]), data.train_node_class] + EPS).mean()
     loss.backward()
     optimizer.step()
 
     micro, macro = micro_macro(data.train_node_class, pred)
 
-    accuracy = np.zeros(shape=data.n_a_type)  # auprc, auroc, ap
-    for i in range(data.train_range.shape[0]):
-        [start, end] = data.train_range[i]
-        s = score[start: end]
-        t = torch.ones(size=s.shape)
-        accuracy[i] = acc(t, s)
+    out.train_out[epoch] = np.array([micro, macro])
 
-    out.train_record[epoch] = accuracy
-    out.train_out[epoch] = np.array([accuracy.mean(), micro, macro])
-
-    print('{:3d}   loss:{:0.4f}   accuracy:{:0.4f}   micro:{:0.4f}   macro:{:0.4f}'
-          .format(epoch, loss.tolist(), accuracy.mean(), micro, macro))
+    print('{:3d}   loss:{:0.4f}   micro:{:0.4f}   macro:{:0.4f}'
+          .format(epoch, loss.tolist(), micro, macro))
 
     return z, loss
 
@@ -111,23 +106,17 @@ def train(epoch):
 def test(z):
     model.eval()
 
-    score, pred = model.mcip(z, data.test_node_idx, data.test_node_class)
+    score = model.mcip(z, data.test_node_idx)
+    pred = torch.argmax(score, dim=1)
 
     micro, macro = micro_macro(data.test_node_class, pred)
 
-    accuracy = np.zeros(shape=data.n_a_type)  # auprc, auroc, ap
-    for i in range(data.test_range.shape[0]):
-        [start, end] = data.test_range[i]
-        s = score[start: end]
-        t = torch.ones(size=s.shape)
-        accuracy[i] = acc(t, s)
-
-    return accuracy, micro, macro
+    return micro, macro
 
 
 # if __name__ == '__main__':
 # hhh
-EPOCH_NUM = int(sys.argv[-1])
+EPOCH_NUM = int(sys.argv[2])
 print('model training ...')
 
 # train and test
@@ -136,14 +125,13 @@ for epoch in range(EPOCH_NUM):
 
     z, loss = train(epoch)
 
-    accuracy, micro, macro = test(z)
+    micro, macro = test(z)
 
 
-    print('{:3d}   loss:{:0.4f}   accuracy:{:0.4f}   micro:{:0.4f}   macro:{:0.4f}    time:{:0.1f}\n'
-          .format(epoch, loss.tolist(), accuracy.mean(), micro, macro, (time.time() - time_begin)))
+    print('{:3d}   loss:{:0.4f}   micro:{:0.4f}   macro:{:0.4f}    time:{:0.1f}\n'
+          .format(epoch, loss.tolist(), micro, macro, (time.time() - time_begin)))
 
-    out.test_record[epoch] = accuracy
-    out.test_out[epoch] = np.array([accuracy.mean(), micro, macro])
+    out.test_out[epoch] = np.array([micro, macro])
 
 # model name
 name = '-{}-{}-{}-{}-{}'.format(pp_nhids_gcn, pa_gcn, pa_out, pa_out, aa_nhids_gcn, learning_rate)
@@ -157,13 +145,16 @@ if device == 'cuda':
 torch.save(model.state_dict(), out_dir + str(EPOCH_NUM) + name + '-model.pt')
 torch.save(out, out_dir + str(EPOCH_NUM) + name + '-record.pt')
 
-# save record to csv
-df = pd.DataFrame(columns=['author label', 'n_author', 'accuracy'])
-df['author label'] = np.array(range(data.n_a_type), dtype=np.int)
-df['n_author'] = np.array(data.n_node_per_type, dtype=np.int)
-df['accuracy'] = out.test_record[EPOCH_NUM-1]
+with open(out_dir + str(EPOCH_NUM) + name + '.txt', 'w') as f:
+    f.write(str(out.test_out[EPOCH_NUM-1]))
 
-# df.astype({'side_effect': 'int32'})
-df.to_csv(out_dir + str(EPOCH_NUM) + name + '-record.csv', index=False)
+# save record to csv
+# df = pd.DataFrame(columns=['author label', 'n_author', 'accuracy'])
+# df['author label'] = np.array(range(data.n_a_type), dtype=np.int)
+# df['n_author'] = np.array(data.n_node_per_type, dtype=np.int)
+# df['accuracy'] = out.test_record[EPOCH_NUM-1]
 #
+# # df.astype({'side_effect': 'int32'})
+# df.to_csv(out_dir + str(EPOCH_NUM) + name + '-record.csv', index=False)
+# #
 print('The trained model and the result record have been saved!')
