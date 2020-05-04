@@ -11,12 +11,10 @@ np.random.seed(1111)
 # ###################################
 # data processing
 # ###################################
-# load data
-ddd = int(sys.argv[1])
-data = torch.load('datasets-auta/auta-{}.pt'.format(ddd))
+data = torch.load('datasets-auta-org/auta.pt')
 
 # output path
-out_dir = './out/auta-{}/'.format(ddd)
+out_dir = './out/auta/'
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
 
@@ -56,10 +54,10 @@ class Model(Module):
 
 
 # hyper-parameter setting
-pp_nhids_gcn = [int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5])]
-pa_gcn = int(sys.argv[6])
-pa_out = int(sys.argv[7])
-aa_nhids_gcn = [pa_gcn + pa_out, int(sys.argv[8]), int(sys.argv[9])]
+pp_nhids_gcn = [int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])]
+pa_gcn = int(sys.argv[5])
+pa_out = int(sys.argv[6])
+aa_nhids_gcn = [pa_gcn + pa_out, int(sys.argv[7]), int(sys.argv[8])]
 learning_rate = 0.01
 
 # model init
@@ -77,7 +75,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # ###################################
 # Train and Test
 # ###################################
-@profile
+# @profile
 def train(epoch):
     model.train()
     optimizer.zero_grad()
@@ -114,10 +112,9 @@ def test(z):
     return micro, macro
 
 
-# if __name__ == '__main__':
-# hhh
-EPOCH_NUM = int(sys.argv[2])
+EPOCH_NUM = int(sys.argv[1])
 print('model training ...')
+z = 0
 
 # train and test
 for epoch in range(EPOCH_NUM):
@@ -126,7 +123,6 @@ for epoch in range(EPOCH_NUM):
     z, loss = train(epoch)
 
     micro, macro = test(z)
-
 
     print('{:3d}   loss:{:0.4f}   micro:{:0.4f}   macro:{:0.4f}    time:{:0.1f}\n'
           .format(epoch, loss.tolist(), micro, macro, (time.time() - time_begin)))
@@ -148,13 +144,6 @@ torch.save(out, out_dir + str(EPOCH_NUM) + name + '-record.pt')
 with open(out_dir + str(EPOCH_NUM) + name + '.txt', 'w') as f:
     f.write(str(out.test_out[EPOCH_NUM-1]))
 
-# save record to csv
-# df = pd.DataFrame(columns=['author label', 'n_author', 'accuracy'])
-# df['author label'] = np.array(range(data.n_a_type), dtype=np.int)
-# df['n_author'] = np.array(data.n_node_per_type, dtype=np.int)
-# df['accuracy'] = out.test_record[EPOCH_NUM-1]
-#
-# # df.astype({'side_effect': 'int32'})
-# df.to_csv(out_dir + str(EPOCH_NUM) + name + '-record.csv', index=False)
-# #
 print('The trained model and the result record have been saved!')
+
+torch.save(z, out_dir + str(EPOCH_NUM) + name + 'weight.pt')
