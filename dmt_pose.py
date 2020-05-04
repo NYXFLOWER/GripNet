@@ -9,7 +9,12 @@ import pandas as pd
 # data processing
 # ###################################
 # load data
-data = torch.load('./data/pose_comb_all.pt')
+ddd = int(sys.argv[-2])
+data = torch.load('./datasets/pose-{}-combl.pt'.format(ddd))
+# root = os.path.abspath(os.getcwd())
+out_dir = './out/pose-{}_dmt/'.format(ddd)
+if not os.path.exists(out_dir):
+    os.makedirs(out_dir)
 
 # node feature vector initialization
 data.feat = sparse_id(data.n_node)
@@ -66,16 +71,15 @@ def train(epoch):
     z = torch.matmul(data.feat, model.embedding)
 
     pos_index = data.train_idx
+
     neg_index = typed_negative_sampling(data.train_idx, data.n_node, data.train_range).to(device)
 
-    tmp_index = typed_negative_sampling(data.train_idx, data.n_drug,
-                                        data.train_range[:-2]).to(device)
-    neg_index = torch.cat([tmp_index, neg_index[:, tmp_index.shape[1]:]], dim=1)
+    # tmp_index = typed_negative_sampling(data.train_idx, data.n_drug,
+    #                                     data.train_range[:-2]).to(device)
+    # neg_index = torch.cat([tmp_index, neg_index[:, tmp_index.shape[1]:]], dim=1)
 
     pos_score = model.dmt(z, pos_index, data.train_et)
     neg_score = model.dmt(z, neg_index, data.train_et)
-    # pos_score = checkpoint(model.dmt, z, pos_index, data.train_et)
-    # neg_score = checkpoint(model.dmt, z, neg_index, data.train_et)
 
     pos_loss = -torch.log(pos_score + EPS).mean()
     neg_loss = -torch.log(1 - neg_score + EPS).mean()
@@ -87,9 +91,9 @@ def train(epoch):
 
     record = np.zeros((3, data.n_edge_type))  # auprc, auroc, ap
 
-    # model.eval()
-    # neg_index = typed_negative_sampling(data.train_idx, data.n_drug, data.train_range[:-2]).to(device)
-    # neg_score = model.dmt(z, neg_index, data.train_et[:neg_index.shape[1]])
+    model.eval()
+    neg_index = typed_negative_sampling(data.train_idx, data.n_drug, data.train_range[:-2]).to(device)
+    neg_score = model.dmt(z, neg_index, data.train_et[:neg_index.shape[1]])
 
     for i in range(data.train_range.shape[0] - 2):
         [start, end] = data.train_range[i]
@@ -143,9 +147,6 @@ def test(z):
 # if __name__ == '__main__':
 # hhh
 EPOCH_NUM = int(sys.argv[-1])
-out_dir = './out/pose_dmt_all/'
-if not os.path.exists(out_dir):
-    os.makedirs(out_dir)
 
 print('model training ...')
 
@@ -187,5 +188,4 @@ df.astype({'side_effect': 'int32'})
 df.to_csv(out_dir + str(EPOCH_NUM) + name + '-record.csv', index=False)
 
 print('The trained model and the result record have been saved!')
-
 
