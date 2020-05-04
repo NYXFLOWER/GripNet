@@ -1,8 +1,8 @@
 from src.layers import *
-from src.decoder import multiInnerProductDecoder
+from src.decoder import multiRelaInnerProductDecoder
 from data.utils import process_edge_multirelational
 from torch_geometric.data import Data
-import sys, time
+import sys, time, os
 import pandas as pd
 
 
@@ -10,9 +10,9 @@ import pandas as pd
 # data processing
 # ###################################
 # load data
-dd = torch.load('data/pose/drug-drug.pt')
-gd = torch.load('data/pose/gene-drug.pt')
-gg = torch.load('data/pose/gene-gene.pt')
+dd = torch.load('data/pose-1/drug-drug.pt')
+gd = torch.load('data/pose-1/gene-drug.pt')
+gg = torch.load('data/pose-1/gene-gene.pt')
 
 # ###########################################################
 # dd.n_edge_type = 100
@@ -31,7 +31,7 @@ data.d_feat = sparse_id(dd.n_node)
 data.edge_weight = torch.ones(gg.n_edge)
 data.n_edges_per_type = [(i[1] - i[0]).data.tolist() for i in data.test_range]
 
-
+# output dictionary
 keys = ('train_record', 'test_record', 'train_out', 'test_out')
 out = Data.from_dict({k: {} for k in keys})
 
@@ -51,12 +51,12 @@ class Model(Module):
     def forward(self, *input):
         pass
 
-    def __init__(self, gg, gd, dd, mip):
+    def __init__(self, gg, gd, dd, dmt):
         super(Model, self).__init__()
         self.gg = gg
         self.gd = gd
         self.dd = dd
-        self.mip = mip
+        self.dmt = dmt
 
 
 # hyper-parameter setting
@@ -71,7 +71,7 @@ model = Model(
     homoGraph(gg.n_node, gg_nhids_gcn, start_graph=True),
     interGraph(sum(gg_nhids_gcn), gd_gcn, dd.n_node, target_feat_dim=gd_out),
     homoGraph(gd_out, dd_nhids_gcn, multi_relational=True, n_rela=dd.n_edge_type),
-    multiInnerProductDecoder(sum(dd_nhids_gcn), dd.n_edge_type)
+    multiRelaInnerProductDecoder(sum(dd_nhids_gcn), dd.n_edge_type)
 ).to(device)
 
 # optimizer
@@ -95,8 +95,8 @@ def train(epoch):
 
     # pos_score = model.mip(z, pos_index, data.train_et)
     # neg_score = model.mip(z, neg_index, data.train_et)
-    pos_score = checkpoint(model.mip, z, pos_index, data.train_et)
-    neg_score = checkpoint(model.mip, z, neg_index, data.train_et)
+    pos_score = checkpoint(model.dmt, z, pos_index, data.train_et)
+    neg_score = checkpoint(model.dmt, z, neg_index, data.train_et)
 
     pos_loss = -torch.log(pos_score + EPS).mean()
     neg_loss = -torch.log(1 - neg_score + EPS).mean()
@@ -138,8 +138,8 @@ def test(z):
 
     record = np.zeros((3, dd.n_edge_type))
 
-    pos_score = model.mip(z, data.test_idx, data.test_et)
-    neg_score = model.mip(z, test_neg_index, data.test_et)
+    pos_score = model.dmt(z, data.test_idx, data.test_et)
+    neg_score = model.dmt(z, test_neg_index, data.test_et)
 
     for i in range(data.test_range.shape[0]):
         [start, end] = data.test_range[i]
@@ -160,7 +160,9 @@ def test(z):
 # if __name__ == '__main__':
 # hhh
 EPOCH_NUM = int(sys.argv[-1])
-out_dir = './out/pose/'
+out_dir = './out/pose-1/'
+if not os.path.exists(out_dir):
+    os.makedirs(out_dir)
 print('model training ...')
 
 # train and test
