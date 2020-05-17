@@ -5,19 +5,19 @@ import numpy as np
 mip = torch.load('out/pose-1/100[64, 32, 16]-32-16-16-[48, 16]-record.pt')
 auroc_mip = [mip.test_out[i][1] for i in range(100)]
 
-dmt = torch.load('out/pose_dmt_all/100-32-0.01-record.pt')
+dmt = torch.load('out/multi-rela/pose_dmt_all/100-32-0.01-record.pt')
 auroc_dmt = [dmt.test_out[i][1] for i in range(100)]
 
-dmt_org = torch.load("out/pose_dmt_org/100-32-0.01-record.pt")
+dmt_org = torch.load("out/multi-rela/pose_dmt_org/100-32-0.01-record.pt")
 auroc_dmt_org = [dmt_org.test_out[i][1] for i in range(100)]
 
-rgcn_org = torch.load('/Users/nyxfer/Docu/MIP/out/pose_rgcn_org/100-64-32-16-16-0.01-record.pt')
+rgcn_org = torch.load('out/multi-rela/pose_rgcn_org/100-64-32-16-16-0.01-record.pt')
 auroc_rgcn_org = [rgcn_org.test_out[i][1] for i in range(100)]
 
-rgcn = torch.load('out/pose_rgcn_all/100-64-32-16-16-0.01-record.pt')
+rgcn = torch.load('out/multi-rela/pose_rgcn_all/100-64-32-16-16-0.01-record.pt')
 auroc_rgcn = [rgcn.test_out[i][1] for i in range(100)]
 
-plt.figure(1)
+plt.figure(1, figsize=(20, 10))
 
 plt.subplot(231)
 x = np.array(range(100), dtype=int) + 1
@@ -45,7 +45,7 @@ plt.title('AUROC by time')
 plt.legend()
 plt.grid()
 
-plt.savefig('./fig/pose_auroc.png')
+plt.savefig('./fig/pose_auroc1.png')
 plt.show()
 
 
