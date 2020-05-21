@@ -197,8 +197,8 @@ class myRGCN(MessagePassing):
 
 class homoGraph(Module):
 
-    def __init__(self, in_dim, nhid_list, requires_grad=True, start_graph=False,
-                 multi_relational=False, n_rela=None, n_base=32):
+    def __init__(self, nhid_list, requires_grad=True, start_graph=False,
+                 in_dim=None, multi_relational=False, n_rela=None, n_base=32):
         super(homoGraph, self).__init__()
         self.multi_relational = multi_relational
         self.start_graph = start_graph
@@ -226,13 +226,14 @@ class homoGraph(Module):
     def reset_parameters(self):
         self.embedding.data.normal_()
 
-    def forward(self, x, homo_edge_index, edge_weight=None, edge_type=None, range_list=None):
-        tmp = []
-
+    def forward(self, x, homo_edge_index, edge_weight=None, edge_type=None,
+                range_list=None, if_catout=False):
         if self.start_graph:
             x = self.embedding
 
-        tmp.append(x)
+        if if_catout:
+            tmp = []
+            tmp.append(x)
 
         if self.multi_relational:
             assert edge_type is not None
@@ -244,7 +245,8 @@ class homoGraph(Module):
                 if self.multi_relational \
                 else net(x, homo_edge_index, edge_weight)
             x = F.relu(x, inplace=True)
-            tmp.append(x)
+            if if_catout:
+                tmp.append(x)
 
         x = self.conv_list[-1](x, homo_edge_index, edge_type, range_list) \
             if self.multi_relational \
@@ -268,8 +270,9 @@ class homoGraph(Module):
         # x = normalize(x)
         x = F.relu(x, inplace=True)
         # TODO
-
-        tmp.append(x)
+        if if_catout:
+            tmp.append(x)
+            x = torch.cat(tmp, dim=1)
 
         # TODO
         # print([torch.abs(a).detach().mean().tolist() for a in tmp])
@@ -278,7 +281,7 @@ class homoGraph(Module):
         # TODO
 
         # TODO
-        return torch.cat(tmp, dim=1)
+        return x
         # TODO
 
 

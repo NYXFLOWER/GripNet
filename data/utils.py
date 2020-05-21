@@ -2,7 +2,7 @@ import torch
 import numpy as np
 
 
-def remove_bidirection(edge_index, edge_type):
+def remove_bidirection(edge_index, edge_type=None):
     mask = edge_index[0] > edge_index[1]
     keep_set = mask.nonzero().view(-1)
 
@@ -118,3 +118,14 @@ def process_node_multilabel(raw_nodes_list):
 
     return train_node_idx, train_node_class, train_range, test_node_idx, test_node_class, test_range
 
+
+def process_data_multiclass(torch_tensor, n_class):
+    node_idx, node_class, sample, range1 = [], [], [], [0]
+    for i in range(n_class):
+        idx = torch_tensor[0][torch_tensor[1] == i]
+        node_idx.append(idx)
+        sample.append(idx.shape[0])
+        range1.append(idx.shape[0]+range1[i])
+    return torch.cat(node_idx), \
+           torch.cat([torch.tensor([i]*sample[i], dtype=torch.int64) for i in range(n_class)]), \
+           [[range1[i], range1[i+1]] for i in range(n_class)]
