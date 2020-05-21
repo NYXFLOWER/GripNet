@@ -13,22 +13,23 @@ np.random.seed(1111)
 # data processing
 # ###################################
 lll = int(sys.argv[-1])
-data = torch.load('datasets-freebase/business.pt')
+data = torch.load('datasets-freebase/all.pt')
 train = torch.from_numpy(pd.read_csv('data/freebase/book_lo_business/train_test_split/label.dat.train_{}'.format(lll), sep='\t', header=None).to_numpy().T)
 test = torch.from_numpy(pd.read_csv('data/freebase/book_lo_business/train_test_split/label.dat.test_{}'.format(lll), sep='\t', header=None).to_numpy().T)
 data.train_node_idx, data.train_node_class, data.train_range = process_data_multiclass(train, data.n_a_type)
 data.test_node_idx, data.test_node_class, data.test_range = process_data_multiclass(test, data.n_a_type)
 
 # output path
-out_dir = './out/book/business-{}-cat-2l1l/'.format(lll)
+out_dir = './out/book/all-{}-2l-1l/'.format(lll)
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
 
 # node feature vector initialization
-data.a_feat = sparse_id(data.n_a_node)
+data.q_feat = sparse_id(data.n_q_node)
 data.p_feat = sparse_id(data.n_p_node)
 data.aa_edge_weight = torch.ones(data.n_aa_edge)
 data.pp_edge_weight = torch.ones(data.n_pp_edge)
+data.qq_edge_weight = torch.ones(data.n_qq_edge)
 data.n_node_per_type = [(i[1] - i[0]) for i in data.test_range]
 data.n_node_per_type_train = [(i[1] - i[0]) for i in data.train_range]
 
@@ -52,30 +53,30 @@ class Model(Module):
     def forward(self, *input):
         pass
 
-    def __init__(self, pp, pa, aa, mcip):
+    def __init__(self, pp, pa, qq, qa, aa, mcip):
         super(Model, self).__init__()
         self.pp = pp
         self.pa = pa
+        self.qq = qq
+        self.qa = qa
         self.aa = aa
         self.mcip = mcip
 
 
 # hyper-parameter setting
 pp_nhids_gcn = [int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])]
-# pa_gcn = int(sys.argv[5])
 pa_out = [int(sys.argv[5]), int(sys.argv[6])]
-# aa_nhids_gcn = [pa_gcn + pa_out, int(sys.argv[7]), int(sys.argv[8])]
-aa_nhids_gcn = [sum(pa_out), int(sys.argv[8])]
+aa_nhids_gcn = [sum(pa_out)*2, int(sys.argv[8])]
 learning_rate = 0.01
 
-# homoGraph(pp_nhids_gcn, start_graph=True, in_dim=data.n_p_node),
-# pp_nhids_gcn[0] = data.n_p_node
 # model init
 model = Model(
     homoGraph(pp_nhids_gcn, start_graph=True, in_dim=data.n_p_node),
-    interGraph(sum(pp_nhids_gcn), pa_out[0], data.n_a_node, target_feat_dim=pa_out[-1]),
+    interGraph(pp_nhids_gcn[-1], pa_out[0], data.n_a_node, target_feat_dim=pa_out[-1]),
+    homoGraph(pp_nhids_gcn, start_graph=True, in_dim=data.n_q_node),
+    interGraph(pp_nhids_gcn[-1], pa_out[0], data.n_a_node, target_feat_dim=pa_out[-1]),
     homoGraph(aa_nhids_gcn),
-    multiClassInnerProductDecoder(sum(aa_nhids_gcn), data.n_a_type)
+    multiClassInnerProductDecoder(aa_nhids_gcn[-1], data.n_a_type)
 ).to(device)
 
 # optimizer
@@ -90,9 +91,11 @@ def train(epoch):
     model.train()
     optimizer.zero_grad()
 
-    z = model.pp(data.p_feat, data.pp_edge_idx, edge_weight=data.pp_edge_weight, if_catout=True)
+    z = model.pp(data.p_feat, data.pp_edge_idx, edge_weight=data.pp_edge_weight)
     z = model.pa(z, data.pa_edge_idx)
-    z = model.aa(z, data.aa_edge_idx, edge_weight=data.aa_edge_weight, if_catout=True)
+    z1 = model.qq(data.q_feat, data.qq_edge_idx, edge_weight=data.qq_edge_weight)
+    z1 = model.qa(z1, data.qa_edge_idx)
+    z = model.aa(torch.cat((z, z1), dim=1), data.aa_edge_idx, edge_weight=data.aa_edge_weight)
 
     score = model.mcip(z, data.train_node_idx)
     pred = torch.argmax(score, dim=1)
