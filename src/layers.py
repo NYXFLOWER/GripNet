@@ -307,7 +307,7 @@ class interGraph(Module):
     def reset_parameters(self):
         self.target_feat.data.normal_()
 
-    def forward(self, x, inter_edge_index, edge_weight=None):
+    def forward(self, x, inter_edge_index, edge_weight=None, if_relu=True, mod='cat'):
         n_source = x.shape[0]
         tmp = inter_edge_index + 0
         tmp[1, :] += n_source
@@ -315,6 +315,13 @@ class interGraph(Module):
         x = torch.cat(
             [x, torch.zeros((self.n_target, x.shape[1])).to(x.device)], dim=0)
         x = self.conv(x, tmp, edge_weight)[n_source:, :]
-        x = F.relu(x)
-        x = torch.cat([x, torch.abs(self.target_feat)], dim=1)
+        if if_relu:
+            x = F.relu(x)
+        if mod == 'cat':
+            x = torch.cat([x, torch.abs(self.target_feat)], dim=1)
+        else:
+            assert x.shape[1] == self.target_feat.shape[1]
+            x = x + torch.abs(self.target_feat)
+        # x = torch.cat([x, F.relu(self.target_feat)], dim=1)
+
         return x
