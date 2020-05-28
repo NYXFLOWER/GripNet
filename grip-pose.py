@@ -14,7 +14,7 @@ ddd = int(sys.argv[-2])
 data = torch.load('datasets/pose-{}.pt'.format(ddd))
 
 # output path
-out_dir = './out/pose-{}/'.format(ddd)
+out_dir = './out/pose-nneg-{}/'.format(ddd)
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
 
@@ -56,22 +56,23 @@ class Model(Module):
 
 # hyper-parameter setting
 gg_nhids_gcn = [32, 16, 16]
-gd_gcn = 16
-gd_out = 32
-dd_nhids_gcn = [gd_gcn+gd_out, 16]
+# gd_gcn = 16
+gd_out = [16, 32]
+dd_nhids_gcn = [sum(gd_out), 16]
 learning_rate = 0.01
 
 # model init
 model = Model(
-    homoGraph(data.n_g_node, gg_nhids_gcn, start_graph=True),
-    interGraph(sum(gg_nhids_gcn), gd_gcn, data.n_d_node, target_feat_dim=gd_out),
-    homoGraph(gd_out, dd_nhids_gcn, multi_relational=True, n_rela=data.n_dd_edge_type),
+    homoGraph(gg_nhids_gcn, start_graph=True, in_dim=data.n_g_node),
+    interGraph(sum(gg_nhids_gcn), gd_out[0], data.n_d_node, target_feat_dim=gd_out[-1]),
+    homoGraph(dd_nhids_gcn, multi_relational=True, n_rela=data.n_dd_edge_type),
     multiRelaInnerProductDecoder(sum(dd_nhids_gcn), data.n_dd_edge_type)
 ).to(device)
 
 # optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
+z = 0
 
 # ###################################
 # Train and Test
@@ -81,12 +82,13 @@ def train(epoch):
     model.train()
     optimizer.zero_grad()
 
-    z = model.gg(data.g_feat, data.gg_edge_index, edge_weight=data.edge_weight)
+    z = model.gg(data.g_feat, data.gg_edge_index, edge_weight=data.edge_weight, if_catout=True)
     z = model.gd(z, data.gd_edge_index)
-    z = model.dd(z, data.train_idx, edge_type=data.train_et, range_list=data.train_range)
+    z = model.dd(z, data.train_idx, edge_type=data.train_et, range_list=data.train_range, if_catout=True)
 
     pos_index = data.train_idx
-    neg_index = typed_negative_sampling(data.train_idx, data.n_d_node, data.train_range).to(device)
+    # neg_index = typed_negative_sampling(data.train_idx, data.n_d_node, data.train_range).to(device)
+    neg_index = negative_sampling(data.train_idx, data.n_d_node).to(device)
 
     pos_score = checkpoint(model.dmt, z, pos_index, data.train_et)
     neg_score = checkpoint(model.dmt, z, neg_index, data.train_et)
@@ -173,7 +175,7 @@ for epoch in range(EPOCH_NUM):
     out.test_out[epoch] = [auprc, auroc, ap]
 
 # model name
-name = '-{}-{}-{}-{}-{}'.format(gg_nhids_gcn, gd_gcn, gd_out, gd_out, dd_nhids_gcn, learning_rate)
+name = '-{}-{}-{}'.format(gg_nhids_gcn, gd_out, dd_nhids_gcn)
 
 if device == 'cuda':
     data = data.to('cpu')
@@ -193,3 +195,10 @@ df.astype({'side_effect': 'int32'})
 df.to_csv(out_dir + str(EPOCH_NUM) + name + '-record.csv', index=False)
 
 print('The trained model and the result record have been saved!')
+
+with open(out_dir + str(EPOCH_NUM) + name + '.txt', 'w') as f:
+    f.write(str(out.test_out[EPOCH_NUM-1]))
+
+print('The trained model and the result record have been saved!')
+
+torch.save(z, out_dir + str(EPOCH_NUM) + name + '-weight.pt')
