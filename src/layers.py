@@ -299,6 +299,11 @@ class interGraph(Module):
 
         # TODO:
         self.target_feat.requires_grad = requires_grad
+
+        if target_dim != target_feat_dim:
+            self.target_feat_down = torch.nn.Parameter(torch.Tensor(self.target_feat_dim, target_dim))
+            self.target_feat_down.requires_grad = requires_grad
+            self.target_feat_down.data.normal_()
         # TODO:
 
         self.conv = myGCN(source_dim, target_dim, cached=True)
@@ -320,8 +325,11 @@ class interGraph(Module):
         if mod == 'cat':
             x = torch.cat([x, torch.abs(self.target_feat)], dim=1)
         else:
-            assert x.shape[1] == self.target_feat.shape[1]
-            x = x + torch.abs(self.target_feat)
+            if x.shape[1] == self.target_feat.shape[1]:
+                x = (x + torch.abs(self.target_feat)) / 2
+            else:
+
+                x = (x + F.relu(torch.matmul(self.target_feat, self.target_feat_down))) / 2
         # x = torch.cat([x, F.relu(self.target_feat)], dim=1)
 
         return x
