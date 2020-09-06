@@ -5,14 +5,18 @@ from torch_geometric.data import Data
 import sys, time, os
 import pandas as pd
 
+print()
+print("========================================================")
+print("run: {} === PoSE-{} === {} === embedding dim: {}".format(int(sys.argv[-4]), int(sys.argv[-2]), sys.argv[-3], int(sys.argv[-1])))
+print("========================================================")
 
 # ###################################
 # data processing
 # ###################################
 # load data
 ddd = int(sys.argv[-2])
-data = torch.load('./datasets/pose-{}-combl.pt'.format(ddd))
-out_dir = './out/pose-{}_rgcn/'.format(ddd)
+data = torch.load('./datasets-pose/pose-{}-combl.pt'.format(ddd))
+out_dir = './out_baseline/pose-{}-baselines/'.format(ddd)
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
 
@@ -36,10 +40,10 @@ out = out.to(device)
 # Model
 # ###################################
 # hyper-parameter setting
-r1_in_dim, r1_out_dim, r2_out_dim = 64, 32, 32
+r1_in_dim, r1_out_dim, r2_out_dim = 64, 32, int(sys.argv[-1])
 n_relations, n_bases = data.n_edge_type, 16
 learning_rate = 0.01
-
+EPOCH_NUM = 100
 
 # model and initialization
 class Model(Module):
@@ -80,9 +84,9 @@ def train(epoch):
     pos_index = data.train_idx
 
     neg_index = typed_negative_sampling(data.train_idx, data.n_node, data.train_range).to(device)
-    # tmp_index = typed_negative_sampling(data.train_idx, data.n_drug,
-    #                                     data.train_range[:-2]).to(device)
-    # neg_index = torch.cat([tmp_index, neg_index[:, tmp_index.shape[1]:]], dim=1)
+    tmp_index = typed_negative_sampling(data.train_idx, data.n_drug,
+                                        data.train_range[:-2]).to(device)
+    neg_index = torch.cat([tmp_index, neg_index[:, tmp_index.shape[1]:]], dim=1)
 
     pos_score = model.dmt(z, pos_index, data.train_et)
     neg_score = model.dmt(z, neg_index, data.train_et)
@@ -152,7 +156,7 @@ def test(z):
 
 # if __name__ == '__main__':
 # hhh
-EPOCH_NUM = int(sys.argv[-1])
+
 
 print('model training ...')
 
@@ -174,7 +178,7 @@ for epoch in range(EPOCH_NUM):
     out.test_out[epoch] = [auprc, auroc, ap]
 
 # model name
-name = '-{}-{}-{}-{}-{}'.format(r1_in_dim, r1_out_dim, r2_out_dim, n_bases, learning_rate)
+name = '{}-{}-{}'.format(int(sys.argv[-4]), 'RGCN', int(sys.argv[-1]))
 
 if device == 'cuda':
     data = data.to('cpu')
@@ -182,8 +186,8 @@ if device == 'cuda':
     out = out.to('cpu')
 
 # save model and record
-torch.save(model.state_dict(), out_dir + str(EPOCH_NUM) + name + '-model.pt')
-torch.save(out, out_dir + str(EPOCH_NUM) + name + '-record.pt')
+torch.save(model.state_dict(), out_dir + name + '-model.pt')
+torch.save(out, out_dir + name + '-record.pt')
 
 # save record to csv
 last_record = out.test_record[EPOCH_NUM-1].T
@@ -191,8 +195,11 @@ et_index = np.array(range(data.test_range.shape[0]), dtype=int).reshape(-1, 1)
 combine = np.concatenate([et_index, np.array(data.n_edges_per_type, dtype=int).reshape(-1, 1), last_record], axis=1)
 df = pd.DataFrame(combine, columns=['side_effect', 'n_instance', 'auprc', 'auroc', 'ap'])
 df.astype({'side_effect': 'int32'})
-df.to_csv(out_dir + str(EPOCH_NUM) + name + '-record.csv', index=False)
+df.to_csv(out_dir + name + '-record.csv', index=False)
 
 print('The trained model and the result record have been saved!')
 
+with open(out_dir + name + '.txt', 'w') as f:
+    f.write(str(out.test_out[EPOCH_NUM-1]))
 
+print('The trained model and the result record have been saved!')
