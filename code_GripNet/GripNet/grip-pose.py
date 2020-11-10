@@ -16,7 +16,7 @@ print("========================================================")
 # ###################################
 # load data
 ddd = int(sys.argv[-2])
-data = torch.load('datasets/pose-{}.pt'.format(ddd))
+data = torch.load('data/pose/pose-{}.pt'.format(ddd))
 
 # d = torch.load('gripNet_baselines/data/book_data_0.pt')
 

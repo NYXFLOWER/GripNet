@@ -7,32 +7,22 @@ import pandas as pd
 
 print()
 print("========================================================")
-print("run: {} === PoSE-{} === {}".format(int(sys.argv[-3]), int(sys.argv[-2]), 'GripNet'))
+print("run: {} === PoSE-{} === {} === embedding dim: {}".format(int(sys.argv[-4]), int(sys.argv[-2]), sys.argv[-3], int(sys.argv[-1])))
 print("========================================================")
-
 
 # ###################################
 # data processing
 # ###################################
 # load data
 ddd = int(sys.argv[-2])
-data = torch.load('datasets/pose-{}.pt'.format(ddd))
-
-# d = torch.load('gripNet_baselines/data/book_data_0.pt')
-
-# output path
-out_dir = './out_gripnet/pose-nneg-{}/'.format(ddd)
+data = torch.load('./datasets-pose/pose-{}-combl.pt'.format(ddd))
+out_dir = './out_baseline/pose-{}-baselines/'.format(ddd)
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
 
 # node feature vector initialization
-data.g_feat = sparse_id(data.n_g_node)
-data.d_feat = sparse_id(data.n_d_node)
-data.edge_weight = torch.ones(data.n_gg_edge)
-data.gd_edge_index = torch.tensor(data.gd_edge_index, dtype=torch.long)
-data.gg_edge_index = torch.tensor(data.gg_edge_index, dtype=torch.long)
+data.feat = sparse_id(data.n_node)
 data.n_edges_per_type = [(i[1] - i[0]).data.tolist() for i in data.test_range]
-
 
 # output dictionary
 keys = ('train_record', 'test_record', 'train_out', 'test_out')
@@ -49,38 +39,35 @@ out = out.to(device)
 # ###################################
 # Model
 # ###################################
+# hyper-parameter setting
+r1_in_dim, r1_out_dim, r2_out_dim = 64, 32, int(sys.argv[-1])
+n_relations, n_bases = data.n_edge_type, 16
+learning_rate = 0.01
+EPOCH_NUM = 100
+
+# model and initialization
 class Model(Module):
     def forward(self, *input):
         pass
 
-    def __init__(self, gg, gd, dd, dmt):
+    def __init__(self, r1, r2, dmt):
         super(Model, self).__init__()
-        self.gg = gg
-        self.gd = gd
-        self.dd = dd
+        self.embedding = Parameter(torch.Tensor(data.n_node, r1_in_dim))
+        self.embedding.data.normal_()
+        self.rgcn1 = r1
+        self.rgcn2 = r2
         self.dmt = dmt
 
 
-# hyper-parameter setting
-gg_nhids_gcn = [32, 16, 16]
-# gd_gcn = 16
-gd_out = [16, 32]
-dd_nhids_gcn = [sum(gd_out), int(sys.argv[-1])]
-learning_rate = 0.01
-EPOCH_NUM = 100
-
-# model init
 model = Model(
-    homoGraph(gg_nhids_gcn, start_graph=True, in_dim=data.n_g_node),
-    interGraph(sum(gg_nhids_gcn), gd_out[0], data.n_d_node, target_feat_dim=gd_out[-1]),
-    homoGraph(dd_nhids_gcn, multi_relational=True, n_rela=data.n_dd_edge_type),
-    multiRelaInnerProductDecoder(sum(dd_nhids_gcn), data.n_dd_edge_type)
+    myRGCN(r1_in_dim, r1_out_dim, n_relations, n_bases, after_relu=False),
+    myRGCN(r1_out_dim, r2_out_dim, n_relations, n_bases, after_relu=True),
+    multiRelaInnerProductDecoder(r2_out_dim, data.n_edge_type)
 ).to(device)
 
 # optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-z = 0
 
 # ###################################
 # Train and Test
@@ -90,16 +77,19 @@ def train(epoch):
     model.train()
     optimizer.zero_grad()
 
-    z = model.gg(data.g_feat, data.gg_edge_index, edge_weight=data.edge_weight, if_catout=True)
-    z = model.gd(z, data.gd_edge_index, mod='cat', if_relu=True)
-    z = model.dd(z, data.train_idx, edge_type=data.train_et, range_list=data.train_range, if_catout=True)
+    z = torch.matmul(data.feat, model.embedding)
+    z = model.rgcn1(z, data.train_idx, data.train_et, data.train_range)
+    z = model.rgcn2(z, data.train_idx, data.train_et, data.train_range)
 
     pos_index = data.train_idx
-    # neg_index = typed_negative_sampling(data.train_idx, data.n_d_node, data.train_range).to(device)
-    neg_index = negative_sampling(data.train_idx, data.n_d_node).to(device)
 
-    pos_score = checkpoint(model.dmt, z, pos_index, data.train_et)
-    neg_score = checkpoint(model.dmt, z, neg_index, data.train_et)
+    neg_index = typed_negative_sampling(data.train_idx, data.n_node, data.train_range).to(device)
+    tmp_index = typed_negative_sampling(data.train_idx, data.n_drug,
+                                        data.train_range[:-2]).to(device)
+    neg_index = torch.cat([tmp_index, neg_index[:, tmp_index.shape[1]:]], dim=1)
+
+    pos_score = model.dmt(z, pos_index, data.train_et)
+    neg_score = model.dmt(z, neg_index, data.train_et)
 
     pos_loss = -torch.log(pos_score + EPS).mean()
     neg_loss = -torch.log(1 - neg_score + EPS).mean()
@@ -109,8 +99,13 @@ def train(epoch):
 
     optimizer.step()
 
-    record = np.zeros((3, data.n_dd_edge_type))  # auprc, auroc, ap
-    for i in range(data.train_range.shape[0]):
+    record = np.zeros((3, data.n_edge_type))  # auprc, auroc, ap
+
+    model.eval()
+    neg_index = typed_negative_sampling(data.train_idx, data.n_drug, data.train_range[:-2]).to(device)
+    neg_score = model.dmt(z, neg_index, data.train_et[:neg_index.shape[1]])
+
+    for i in range(data.train_range.shape[0] - 2):
         [start, end] = data.train_range[i]
         p_s = pos_score[start: end]
         n_s = neg_score[start: end]
@@ -133,18 +128,17 @@ def train(epoch):
     return z, loss
 
 
-test_neg_index = typed_negative_sampling(data.test_idx, data.n_d_node, data.test_range).to(device)
+test_neg_index = typed_negative_sampling(data.test_idx, data.n_drug, data.test_range[:-2]).to(device)
 
 
 def test(z):
     model.eval()
 
-    record = np.zeros((3, data.n_dd_edge_type))
+    record = np.zeros((3, data.n_edge_type))
 
     pos_score = model.dmt(z, data.test_idx, data.test_et)
-    neg_score = model.dmt(z, test_neg_index, data.test_et)
-
-    for i in range(data.test_range.shape[0]):
+    neg_score = model.dmt(z, test_neg_index, data.test_et[:test_neg_index.shape[1]])
+    for i in range(data.test_range.shape[0] - 2):
         [start, end] = data.test_range[i]
         p_s = pos_score[start: end]
         n_s = neg_score[start: end]
@@ -163,6 +157,7 @@ def test(z):
 # if __name__ == '__main__':
 # hhh
 
+
 print('model training ...')
 
 # train and test
@@ -175,7 +170,7 @@ for epoch in range(EPOCH_NUM):
     [auprc, auroc, ap] = record_te.mean(axis=1)
 
     print(
-        '{:3d}   loss:{:0.4f}   auprc:{:0.4f}   auroc:{:0.4f}   ap@50:{:0.4f}    time:{:0.2f}\n'
+        '{:3d}   loss:{:0.4f}   auprc:{:0.4f}   auroc:{:0.4f}   ap@50:{:0.4f}    time:{:0.1f}\n'
         .format(epoch, loss.tolist(), auprc, auroc, ap,
                 (time.time() - time_begin)))
 
@@ -183,7 +178,7 @@ for epoch in range(EPOCH_NUM):
     out.test_out[epoch] = [auprc, auroc, ap]
 
 # model name
-name = '{}-{}-{}-{}'.format(sys.argv[-3], gg_nhids_gcn, gd_out, dd_nhids_gcn)
+name = '{}-{}-{}'.format(int(sys.argv[-4]), 'RGCN', int(sys.argv[-1]))
 
 if device == 'cuda':
     data = data.to('cpu')
@@ -208,5 +203,3 @@ with open(out_dir + name + '.txt', 'w') as f:
     f.write(str(out.test_out[EPOCH_NUM-1]))
 
 print('The trained model and the result record have been saved!')
-
-torch.save(z, out_dir + name + '-weight.pt')

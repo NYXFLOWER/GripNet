@@ -20,7 +20,7 @@ data.train_node_idx, data.train_node_class, data.train_range = process_data_mult
 data.test_node_idx, data.test_node_class, data.test_range = process_data_multiclass(test, data.n_a_type)
 
 # output path
-out_dir = './out/book/business-{}-cat-2l1l/'.format(lll)
+out_dir = './nout/book/bus-2l2l/'.format(lll)
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
 
@@ -65,7 +65,7 @@ pp_nhids_gcn = [int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])]
 # pa_gcn = int(sys.argv[5])
 pa_out = [int(sys.argv[5]), int(sys.argv[6])]
 # aa_nhids_gcn = [pa_gcn + pa_out, int(sys.argv[7]), int(sys.argv[8])]
-aa_nhids_gcn = [sum(pa_out), int(sys.argv[8])]
+aa_nhids_gcn = [sum(pa_out), int(sys.argv[7]), int(sys.argv[8])]
 learning_rate = 0.01
 
 # homoGraph(pp_nhids_gcn, start_graph=True, in_dim=data.n_p_node),
@@ -85,13 +85,13 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # ###################################
 # Train and Test
 # ###################################
-# @profile
+@profile
 def train(epoch):
     model.train()
     optimizer.zero_grad()
 
     z = model.pp(data.p_feat, data.pp_edge_idx, edge_weight=data.pp_edge_weight, if_catout=True)
-    z = model.pa(z, data.pa_edge_idx)
+    z = model.pa(z, data.pa_edge_idx, if_relu=True, mod='cat')
     z = model.aa(z, data.aa_edge_idx, edge_weight=data.aa_edge_weight, if_catout=True)
 
     score = model.mcip(z, data.train_node_idx)
@@ -134,7 +134,7 @@ for epoch in range(EPOCH_NUM):
 
     micro, macro = test(z)
 
-    print('{:3d}   loss:{:0.4f}   micro:{:0.4f}   macro:{:0.4f}    time:{:0.1f}\n'
+    print('{:3d}   loss:{:0.4f}   micro:{:0.4f}   macro:{:0.4f}    time:{:0.2f}\n'
           .format(epoch, loss.tolist(), micro, macro, (time.time() - time_begin)))
 
     out.test_out[epoch] = np.array([micro, macro])

@@ -13,14 +13,14 @@ np.random.seed(1111)
 # data processing
 # ###################################
 lll = int(sys.argv[-1])
-data = torch.load('datasets-freebase/org3.pt')
+data = torch.load('datasets-freebase/all.pt')
 train = torch.from_numpy(pd.read_csv('data/freebase/book_lo_business/train_test_split/label.dat.train_{}'.format(lll), sep='\t', header=None).to_numpy().T)
 test = torch.from_numpy(pd.read_csv('data/freebase/book_lo_business/train_test_split/label.dat.test_{}'.format(lll), sep='\t', header=None).to_numpy().T)
 data.train_node_idx, data.train_node_class, data.train_range = process_data_multiclass(train, data.n_a_type)
 data.test_node_idx, data.test_node_class, data.test_range = process_data_multiclass(test, data.n_a_type)
 
 # output path
-out_dir = './nout/freebase-c/2l2l1l-add/'
+out_dir = './nout/all/2l2l2l-add/'.format(lll)
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
 
@@ -67,8 +67,8 @@ class Model(Module):
 pp_nhids_gcn = [int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])]
 qq_nhids_gcn = [int(sys.argv[5]), int(sys.argv[6]), int(sys.argv[7])]
 pa_out = [int(sys.argv[8]), int(sys.argv[9])]
-# aa_nhids_gcn = [sum(pa_out), int(sys.argv[11])]
-aa_nhids_gcn = [pa_out[0], int(sys.argv[11])]
+# aa_nhids_gcn = [sum(pa_out)*2, int(sys.argv[10]), int(sys.argv[11])]
+aa_nhids_gcn = [pa_out[0], int(sys.argv[8])]
 learning_rate = 0.01
 
 # model init
