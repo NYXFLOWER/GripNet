@@ -133,3 +133,4 @@ dmypy.json
 datasets/
 out/*
 datasets-pose/
+data/
