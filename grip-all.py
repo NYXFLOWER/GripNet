@@ -53,22 +53,25 @@ class Model(Module):
     def forward(self, *input):
         pass
 
-    def __init__(self, pp, pa, qq, qa, aa, mcip):
+    def __init__(self, pp, pa, qq, qa, aae, aa, mcip):
         super(Model, self).__init__()
         self.pp = pp
         self.pa = pa
         self.qq = qq
         self.qa = qa
+        self.aa_embeddings = aae
         self.aa = aa
         self.mcip = mcip
 
+        self.aa_embeddings.requires_grad = True
+        self.aa_embeddings.data.normal_()
 
 # hyper-parameter setting
 pp_nhids_gcn = [int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])]
 qq_nhids_gcn = [int(sys.argv[5]), int(sys.argv[6]), int(sys.argv[7])]
 pa_out = [int(sys.argv[8]), int(sys.argv[9])]
 # aa_nhids_gcn = [sum(pa_out), int(sys.argv[11])]
-aa_nhids_gcn = [pa_out[0], int(sys.argv[11])]
+aa_nhids_gcn = [pa_out[-1], int(sys.argv[10])]
 learning_rate = 0.01
 
 # model init
@@ -77,6 +80,7 @@ model = Model(
     interGraph(sum(pp_nhids_gcn), pa_out[0], data.n_a_node, target_feat_dim=pa_out[-1]),
     homoGraph(qq_nhids_gcn, start_graph=True, in_dim=data.n_q_node),
     interGraph(sum(qq_nhids_gcn), pa_out[0], data.n_a_node, target_feat_dim=pa_out[-1]),
+    torch.nn.Parameter(torch.Tensor(data.n_a_node, aa_nhids_gcn[0])),
     homoGraph(aa_nhids_gcn),
     multiClassInnerProductDecoder(aa_nhids_gcn[-1], data.n_a_type)
 ).to(device)
@@ -97,8 +101,8 @@ def train(epoch):
     z = model.pa(z, data.pa_edge_idx, mod='add', if_relu=True)
     z1 = model.qq(data.q_feat, data.qq_edge_idx, edge_weight=data.qq_edge_weight, if_catout=True)
     z1 = model.qa(z1, data.qa_edge_idx, mod='add', if_relu=True)
-    # z = model.aa(torch.cat((z, z1), dim=1), data.aa_edge_idx, edge_weight=data.aa_edge_weight)
-    z = model.aa((z + z1)/2, data.aa_edge_idx, edge_weight=data.aa_edge_weight)
+    # z = model.aa(torch.cat((z, z1, aa_embeddings), dim=1), data.aa_edge_idx, edge_weight=data.aa_edge_weight)
+    z = model.aa((z + z1 + model.aa_embeddings)/3, data.aa_edge_idx, edge_weight=data.aa_edge_weight)
 
     score = model.mcip(z, data.train_node_idx)
     pred = torch.argmax(score, dim=1)
@@ -142,7 +146,7 @@ for epoch in range(EPOCH_NUM):
 
     out.test_out[epoch] = np.array([micro, macro])
 
-print('{:3d}   loss:{:0.4f}   micro:{:0.4f}   macro:{:0.4f}    time:{:0.2f}\n'
+    print('{:3d}   loss:{:0.4f}   micro:{:0.4f}   macro:{:0.4f}    time:{:0.2f}\n'
       .format(epoch, loss.tolist(), micro, macro, (time.time() - time_begin)))
 
 
