@@ -77,9 +77,9 @@ learning_rate = 0.01
 # model init
 model = Model(
     homoGraph(pp_nhids_gcn, start_graph=True, in_dim=data.n_p_node),
-    interGraph(sum(pp_nhids_gcn), pa_out[0], data.n_a_node, target_feat_dim=pa_out[-1]),
+    interGraph(sum(pp_nhids_gcn), pa_out[0], data.n_a_node, target_feat_dim=pa_out[-1], if_one_external=False),
     homoGraph(qq_nhids_gcn, start_graph=True, in_dim=data.n_q_node),
-    interGraph(sum(qq_nhids_gcn), pa_out[0], data.n_a_node, target_feat_dim=pa_out[-1]),
+    interGraph(sum(qq_nhids_gcn), pa_out[0], data.n_a_node, target_feat_dim=pa_out[-1], if_one_external=False),
     torch.nn.Parameter(torch.Tensor(data.n_a_node, aa_nhids_gcn[0])),
     homoGraph(aa_nhids_gcn),
     multiClassInnerProductDecoder(aa_nhids_gcn[-1], data.n_a_type)

@@ -288,12 +288,18 @@ class homoGraph(Module):
 class interGraph(Module):
 
     def __init__(self, source_dim, target_dim, n_target, target_feat_dim=32,
-                 requires_grad=True):
+                 requires_grad=True, if_one_external=True):
         super(interGraph, self).__init__()
         self.source_dim = source_dim
         self.target_dim = target_dim
         self.target_feat_dim = target_feat_dim
         self.n_target = n_target
+
+        self.if_one_external = if_one_external
+        if not self.if_one_external:
+            self.conv = myGCN(source_dim, target_dim, cached=True)
+            return
+
         self.target_feat = torch.nn.Parameter(
             torch.Tensor(n_target, target_feat_dim))
 
@@ -322,6 +328,10 @@ class interGraph(Module):
         x = self.conv(x, tmp, edge_weight)[n_source:, :]
         if if_relu:
             x = F.relu(x)
+
+        if not self.if_one_external:
+            return x
+
         if mod == 'cat':
             x = torch.cat([x, torch.abs(self.target_feat)], dim=1)
         else:
