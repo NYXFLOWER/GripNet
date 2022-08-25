@@ -96,6 +96,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <table>
   <tr>
     <td align="center"><a href="https://github.com/sangsq"><img src="https://avatars.githubusercontent.com/u/16742808?v=4?s=100" width="100px;" alt=""/><br /><sub><b>sangsq</b></sub></a><br /><a href="https://github.com/NYXFLOWER/GripNet/commits?author=sangsq" title="Code">💻</a> <a href="#ideas-sangsq" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="http://www.peizhenbai.me"><img src="https://avatars.githubusercontent.com/u/67964033?v=4?s=100" width="100px;" alt=""/><br /><sub><b>peizhenbai</b></sub></a><br /><a href="https://github.com/NYXFLOWER/GripNet/commits?author=pz-white" title="Code">💻</a> <a href="https://github.com/NYXFLOWER/GripNet/commits?author=pz-white" title="Tests">⚠️</a></td>
   </tr>
 </table>
 
