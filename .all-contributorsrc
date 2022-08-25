@@ -1,0 +1,25 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "WhiteReal",
+      "name": "WhiteReal",
+      "avatar_url": "https://avatars.githubusercontent.com/u/23659481?v=4",
+      "profile": "https://github.com/WhiteReal",
+      "contributions": [
+        "code",
+        "test"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "GripNet",
+  "projectOwner": "NYXFLOWER",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
