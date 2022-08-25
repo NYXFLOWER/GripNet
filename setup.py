@@ -1,6 +1,13 @@
 from setuptools import setup
 
-requirements = ["numpy", "pandas", "scikit-learn>=0.21.2", "scipy", "matplotlib"]
+requirements = [
+    "numpy",
+    "pandas",
+    "scikit-learn>=0.21.2",
+    "scipy",
+    "matplotlib",
+    "pytorch_memlab",
+]
 
 setup(
     name="gripnet",
