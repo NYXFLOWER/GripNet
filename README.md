@@ -1,25 +1,27 @@
 # Graph Information Propagation Network (GripNet) Model
 
-GripNet is an effective and efficient framework to learn node representations on **heterogeneous graphs** (or Knowledge Graphs) for multi-relational **link prediction**, and **node classification**, when there is only a type of node/edge related to the task. It is also a natural framework for graph-like **data integration** (i.e. integrating multiple datasets).
-
 This repository contains a PyTorch implementation of GripNet, as well as eight datasets and experiments on link prediction and node classification. The description of model and the results can be found in our paper:
 
 [GripNet: Graph Information Propagation on Supergraph for Heterogeneous Graphs](https://www.sciencedirect.com/science/article/pii/S0031320322004538), Hao Xu, Shengqi Sang, Peizhen Bai, Ruike Li, Laurence Yang, Haiping Lu (Pattern Recognition 2022)
 
 ## GripNet and Baselines
 
-We provide the implementation of GripNet in the root directory, and the code for baselines:
+GripNet is an effective and efficient framework to learn node representations on **heterogeneous graphs** (or Knowledge Graphs) for multi-relational **link prediction**, and **node classification**, when there is only a type of node/edge related to the task. It is also a natural framework for graph-like **data integration** (i.e. integrating multiple datasets).
 
-- TransE, RotatE, ComplEx, DistMult and RGCN on link prediction (LP) in `baselines/LP_baselines/`
-- GCN, GAT, RGCN and GANN on node classification (NC) in `baselines/NC_baselines/`
+We provide the implementations of GripNet in the root directory, and those of baselines:
+
+- TransE, RotatE, ComplEx, DistMult and RGCN on link prediction (LP) in `baselines/LP_baselines/`, and
+- GCN, GAT, RGCN and GANN on node classification (NC) in `baselines/NC_baselines/`,
+
+on three link prediction datasets (pose-0/1/2) and five node classification datasets (aminer and freebase-a/b/c/d).
 
 Each model directory contains a bash script, which gives examples to run models. You can explore different model structures and hyperparameter settings by changing input parameters or code directly. It takes three steps to run these scripts.
 
 ### Step 1: Installation
 
-*Prerequisites*: Before installing `gripnet`, PyTorch and PyTorch Geometric are required to be installed matching your hardware.
+(Prerequisites): Before installing `gripnet`, PyTorch (torch>=1.4.0) and PyTorch Geometric (torch_geometric<2.0) are required to be installed matching your hardware.
 
-Install from source:
+Install `gripnet` from source:
 ```bash
 git clone https://github.com/NYXFLOWER/GripNet.git
 cd GripNet
@@ -33,7 +35,7 @@ Download the datasets into the corresponding directories with the provided links
 - `.`: https://www.dropbox.com/s/hnt3v5890qozbtx/datasets.zip
 - `./baselines/`: https://www.dropbox.com/s/wieca61m7jw2zqv/datasets_baselines.zip
 
-; or using commands:
+; or use the following commands:
 
 ```bash
 wget https://www.dropbox.com/s/hnt3v5890qozbtx/datasets.zip
