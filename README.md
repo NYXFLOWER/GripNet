@@ -1,7 +1,4 @@
 # Graph Information Propagation Network (GripNet) Model
-<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors-)
-<!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 This repository contains a PyTorch implementation of GripNet, as well as eight datasets and experiments on link prediction and node classification. The description of model and the results can be found in our paper:
 
