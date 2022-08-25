@@ -28,7 +28,7 @@ pip install .
 
 ### Step 2: Dataset Preparation
 
-We constructed eight datasets for the experiments: three link prediction datasets (pose-0/1/2) and five node classification datasets (aminer and freebase-a/b/c/d). 
+We constructed eight datasets for the experiments: three link prediction datasets (pose-0/1/2) and five node classification datasets (aminer and freebase-a/b/c/d).
 
 The datasets need to be downloaded into the corresponding directories with the provided links and unzipped:
 
@@ -39,10 +39,11 @@ Or, prepare the datasets using the following commands:
 
 ```bash
 wget https://www.dropbox.com/s/hnt3v5890qozbtx/datasets.zip
-unzip datasets.zip
+unzip datasets.zip && rm datasets.zip
 
 cd baselines/
-wget https://www.dropbox.com/s/wieca61m7jw2zqv/datasets_baselines.zip
+wget https://www.dropbox.com/s/g81hgxnewi7br8d/datasets_baselines.zip
+unzip datasets_baselines.zip && rm datasets_baselines.zip
 ```
 
 Additionally, the raw data and code for constructing these datasets are available to download via: https://www.dropbox.com/s/41e43exro113pc9/data.zip

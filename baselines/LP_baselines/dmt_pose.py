@@ -10,13 +10,22 @@ import os
 import pandas as pd
 from pytorch_memlab import profile
 
+print()
+print("========================================================")
+print(
+    "run: {} epochs === PoSE-{} === {}".format(
+        int(sys.argv[1]), int(sys.argv[2]), "DistMult-Improved"
+    )
+)
+print("========================================================")
+
 
 # ###################################
 # data processing
 # ###################################
 # load data
-ddd = int(sys.argv[-2])
-data = torch.load("../datasets_baselines/pose-{}-combl.pt".format(ddd))
+ddd = int(sys.argv[2])
+data = torch.load("datasets_baselines/pose-{}-combl.pt".format(ddd))
 # root = os.path.abspath(os.getcwd())
 out_dir = "./out/pose-{}_dmt/".format(ddd)
 if not os.path.exists(out_dir):
@@ -159,7 +168,7 @@ def test(z):
 
 # if __name__ == '__main__':
 # hhh
-EPOCH_NUM = int(sys.argv[-1])
+EPOCH_NUM = int(sys.argv[1])
 
 print("model training ...")
 
@@ -182,7 +191,7 @@ for epoch in range(EPOCH_NUM):
     out.test_out[epoch] = [auprc, auroc, ap]
 
 # model name
-name = "-{}-{}".format(embed_dim, learning_rate)
+name = "{}-{}".format(EPOCH_NUM, "DistMult-Improved")
 
 if device == "cuda":
     data = data.to("cpu")

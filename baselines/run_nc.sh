@@ -1,13 +1,26 @@
 #!/usr/bin/env bash
 
-python NC_baselines/gat.py -i ../datasets_databases/aminer.pt -o result/aminer/gat-32.txt
-python NC_baselines/gat.py -i ../datasets_databases/freebase-a.pt -o result/freebase-a/gat-32.txt
-python NC_baselines/gat.py -i ../datasets_databases/freebase-b.pt -o result/freebase-b/gat-32.txt
-python NC_baselines/gat.py -i ../datasets_databases/freebase-c.pt -o result/freebase-c/gat-32.txt
-python NC_baselines/gat.py -i ../datasets_databases/freebase-d.pt -o result/freebase-d/gat-32.txt
+# -i input dataset file
+# -o output directory
+# -n output file name
 
-python NC_baselines/rgcn_mlp.py -i ../datasets_databases/aminer.pt -o result/aminer/rgcn-32.txt
-python NC_baselines/rgcn_mlp.py -i ../datasets_databases/freebase-a.pt -o result/freebase-a/rgcn-32.txt
-python NC_baselines/rgcn_mlp.py -i ../datasets_databases/freebase-b.pt -o result/freebase-b/rgcn-32.txt
-python NC_baselines/rgcn_mlp.py -i ../datasets_databases/freebase-c.pt -o result/freebase-c/rgcn-32.txt
-python NC_baselines/rgcn_mlp.py -i ../datasets_databases/freebase-d.pt -o result/freebase-d/rgcn-32.txt
+# GAT model
+python NC_baselines/GAT.py -i datasets_baselines/aminer.pt -o out/aminer/ -n gat-32.txt
+python NC_baselines/GAT.py -i datasets_baselines/freebase-a.pt -o out/freebase-a/ -n gat-32.txt
+python NC_baselines/GAT.py -i datasets_baselines/freebase-b.pt -o out/freebase-b/ -n gat-32.txt
+python NC_baselines/GAT.py -i datasets_baselines/freebase-c.pt -o out/freebase-c/ -n gat-32.txt
+python NC_baselines/GAT.py -i datasets_baselines/freebase-d.pt -o out/freebase-d/ -n gat-32.txt
+
+# GCN model
+python NC_baselines/GCN_MLP.py -i datasets_baselines/aminer.pt -o out/aminer/ -n gcn-32.txt
+python NC_baselines/GCN_MLP.py -i datasets_baselines/freebase-a.pt -o out/freebase-a/ -n gcn-32.txt
+python NC_baselines/GCN_MLP.py -i datasets_baselines/freebase-b.pt -o out/freebase-b/ -n gcn-32.txt
+python NC_baselines/GCN_MLP.py -i datasets_baselines/freebase-c.pt -o out/freebase-c/ -n gcn-32.txt
+python NC_baselines/GCN_MLP.py -i datasets_baselines/freebase-d.pt -o out/freebase-d/ -n gcn-32.txt
+
+# RGCN model
+python NC_baselines/RGCN_MLP.py -i datasets_baselines/aminer.pt -o out/aminer/ -n rgcn-32.txt
+python NC_baselines/RGCN_MLP.py -i datasets_baselines/freebase-a.pt -o out/freebase-a/ -n rgcn-32.txt
+python NC_baselines/RGCN_MLP.py -i datasets_baselines/freebase-b.pt -o out/freebase-b/ -n rgcn-32.txt
+python NC_baselines/RGCN_MLP.py -i datasets_baselines/freebase-c.pt -o out/freebase-c/ -n rgcn-32.txt
+python NC_baselines/RGCN_MLP.py -i datasets_baselines/freebase-d.pt -o out/freebase-d/ -n rgcn-32.txt

@@ -16,18 +16,16 @@ np.random.seed(1111)
 print()
 print("========================================================")
 print(
-    "run: {} === PoSE-{} === {} === embedding dim: {}".format(
-        int(sys.argv[-4]), int(sys.argv[-2]), sys.argv[-3], int(sys.argv[-1])
-    )
+    "run: {} === PoSE-{} === {}".format(int(sys.argv[1]), int(sys.argv[2]), sys.argv[3])
 )
 print("========================================================")
-EPOCH_NUM = 100
+EPOCH_NUM = int(sys.argv[1])
 # ###################################
 # data processing
 # ###################################
 # load data
-ddd = int(sys.argv[-2])
-data = torch.load("../datasets_baselines/pose-{}-combl.pt".format(ddd))
+ddd = int(sys.argv[2])
+data = torch.load("datasets_baselines/pose-{}-combl.pt".format(ddd))
 # root = os.path.abspath(os.getcwd())
 out_dir = "./out/pose-{}-baselines/".format(ddd)
 if not os.path.exists(out_dir):
@@ -53,7 +51,7 @@ out = out.to(device)
 # Model
 # ###################################
 # hyper-parameter setting
-embed_dim = int(sys.argv[-1])
+embed_dim = 32
 learning_rate = 0.01
 
 
@@ -238,7 +236,7 @@ class KGEModel(nn.Module):
 
 
 model = KGEModel(
-    str(sys.argv[-3]),
+    str(sys.argv[3]),
     data.n_drug + data.n_gene,
     data.n_edge_type,
     hidden_dim=embed_dim,
@@ -360,7 +358,7 @@ for epoch in range(EPOCH_NUM):
     out.test_out[epoch] = [auprc, auroc, ap]
 
 # model name
-name = "{}-{}-{}".format(int(sys.argv[-4]), str(sys.argv[-3]), embed_dim)
+name = "{}-{}".format(int(sys.argv[1]), str(sys.argv[3]))
 
 if device == "cuda":
     data = data.to("cpu")

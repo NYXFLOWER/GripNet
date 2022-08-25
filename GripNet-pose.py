@@ -18,6 +18,9 @@ import pandas as pd
 from pytorch_memlab import profile
 from torch.utils.checkpoint import checkpoint
 
+torch.manual_seed(1111)
+np.random.seed(1111)
+
 print()
 print("========================================================")
 print(

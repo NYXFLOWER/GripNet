@@ -8,6 +8,7 @@ import numpy as np
 import argparse
 from torch.nn import Parameter
 import time
+import os
 
 torch.manual_seed(1111)
 np.random.seed(1111)
@@ -17,11 +18,10 @@ parser.add_argument(
     "-i", "--input", default="../data/AuTa_data_0.pt", type=str, help="input file path"
 )
 parser.add_argument(
-    "-o",
-    "--output",
-    default="../result/auta/auta_gcn.txt",
-    type=str,
-    help="output file path",
+    "-o", "--output", default="../result/auta", type=str, help="output directory",
+)
+parser.add_argument(
+    "-n", "--name", default="auta_gcn.txt", type=str, help="output file name",
 )
 parser.add_argument("-l", "--lr", default=0.01, type=float, help="learning rate")
 parser.add_argument("-e", "--epoch", default=100, type=int, help="epoch")
@@ -95,7 +95,11 @@ def test():
     return micro, macro
 
 
-f = open(output_result, "w")
+output_name = args.name
+if not os.path.exists(output_result):
+    os.makedirs(output_result)
+f = open(output_result + output_name, "w")
+
 
 for epoch in range(1, args.epoch + 1):
     time_begin = time.time()

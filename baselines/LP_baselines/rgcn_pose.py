@@ -14,8 +14,8 @@ from pytorch_memlab import profile
 print()
 print("========================================================")
 print(
-    "run: {} === PoSE-{} === {} === embedding dim: {}".format(
-        int(sys.argv[-4]), int(sys.argv[-2]), sys.argv[-3], int(sys.argv[-1])
+    "run: {} epochs === PoSE-{} === {}".format(
+        int(sys.argv[1]), int(sys.argv[2]), "RGCN-Improved"
     )
 )
 print("========================================================")
@@ -24,8 +24,8 @@ print("========================================================")
 # data processing
 # ###################################
 # load data
-ddd = int(sys.argv[-2])
-data = torch.load("../datasets_baselines/pose-{}-combl.pt".format(ddd))
+ddd = int(sys.argv[2])
+data = torch.load("/datasets_baselines/pose-{}-combl.pt".format(ddd))
 out_dir = "./out/pose-{}-baselines/".format(ddd)
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
@@ -50,7 +50,7 @@ out = out.to(device)
 # Model
 # ###################################
 # hyper-parameter setting
-r1_in_dim, r1_out_dim, r2_out_dim = 64, 32, int(sys.argv[-1])
+r1_in_dim, r1_out_dim, r2_out_dim = 64, 32, 32
 n_relations, n_bases = data.n_edge_type, 16
 learning_rate = 0.01
 EPOCH_NUM = 100
@@ -200,7 +200,7 @@ for epoch in range(EPOCH_NUM):
     out.test_out[epoch] = [auprc, auroc, ap]
 
 # model name
-name = "{}-{}-{}".format(int(sys.argv[-4]), "RGCN", int(sys.argv[-1]))
+name = "{}-{}".format(EPOCH_NUM, "RGCN-Improved")
 
 if device == "cuda":
     data = data.to("cpu")
