@@ -15,6 +15,11 @@ import pandas as pd
 torch.manual_seed(1111)
 np.random.seed(1111)
 
+print()
+print("========================================================")
+print("run: {} epochs === Freebase-a === {}".format(int(sys.argv[1]), "GripNet"))
+print("========================================================")
+
 
 # ###################################
 # data processing
@@ -82,24 +87,23 @@ class Model(Module):
     def __init__(self, pp, mcip):
         super(Model, self).__init__()
         self.pp = pp
-        # self.pa = pa
-        # self.aa = aa
         self.mcip = mcip
 
 
 # hyper-parameter setting
-pp_nhids_gcn = [int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])]
-pa_out = [int(sys.argv[5]), int(sys.argv[6])]
-aa_nhids_gcn = [sum(pa_out), int(sys.argv[8])]
+pp_nhids_gcn = [256, 128, 128]
+
+# pp_nhids_gcn = [int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])]
+
 learning_rate = 0.01
 
-# homoGraph(pp_nhids_gcn, start_graph=True, in_dim=data.n_p_node),
-# pp_nhids_gcn[0] = data.n_p_node
 # model init
 model = Model(
     homoGraph(pp_nhids_gcn, start_graph=True, in_dim=data.n_a_node),
     multiClassInnerProductDecoder(pp_nhids_gcn[-1], data.n_a_type),
 ).to(device)
+
+print(model)
 
 # optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -114,8 +118,6 @@ def train(epoch):
     optimizer.zero_grad()
 
     z = model.pp(data.a_feat, data.aa_edge_idx, edge_weight=data.aa_edge_weight)
-    # z = model.pa(z, data.pa_edge_idx)
-    # z = model.aa(z, data.aa_edge_idx, edge_weight=data.aa_edge_weight)
 
     score = model.mcip(z, data.train_node_idx)
     pred = torch.argmax(score, dim=1)
@@ -169,7 +171,7 @@ for epoch in range(EPOCH_NUM):
     out.test_out[epoch] = np.array([micro, macro])
 
 # model name
-name = "-{}-{}-{}".format(pp_nhids_gcn, pa_out, aa_nhids_gcn)
+name = "-{}".format(pp_nhids_gcn)
 
 if device == "cuda":
     data = data.to("cpu")

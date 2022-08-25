@@ -15,6 +15,11 @@ import pandas as pd
 torch.manual_seed(1111)
 np.random.seed(1111)
 
+print()
+print("========================================================")
+print("run: {} epochs === Freebase-b === {}".format(int(sys.argv[1]), "GripNet"))
+print("========================================================")
+
 
 # ###################################
 # data processing
@@ -88,15 +93,19 @@ class Model(Module):
 
 
 # hyper-parameter setting
-pp_nhids_gcn = [int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])]
+pp_nhids_gcn = [128, 64, 64]
+pa_out = [128, 128]
+aa_nhids_gcn = [sum(pa_out), 128, 32]
+
+# pp_nhids_gcn = [int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])]
+# pa_out = [int(sys.argv[5]), int(sys.argv[6])]
+# aa_nhids_gcn = [sum(pa_out), int(sys.argv[7]), int(sys.argv[8])]
+
 # pa_gcn = int(sys.argv[5])
-pa_out = [int(sys.argv[5]), int(sys.argv[6])]
 # aa_nhids_gcn = [pa_gcn + pa_out, int(sys.argv[7]), int(sys.argv[8])]
-aa_nhids_gcn = [sum(pa_out), int(sys.argv[7]), int(sys.argv[8])]
+
 learning_rate = 0.01
 
-# homoGraph(pp_nhids_gcn, start_graph=True, in_dim=data.n_p_node),
-# pp_nhids_gcn[0] = data.n_p_node
 # model init
 model = Model(
     homoGraph(pp_nhids_gcn, start_graph=True, in_dim=data.n_p_node),
@@ -104,6 +113,8 @@ model = Model(
     homoGraph(aa_nhids_gcn),
     multiClassInnerProductDecoder(sum(aa_nhids_gcn), data.n_a_type),
 ).to(device)
+
+print(model)
 
 # optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)

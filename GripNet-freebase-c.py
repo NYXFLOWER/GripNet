@@ -15,6 +15,10 @@ import pandas as pd
 torch.manual_seed(1111)
 np.random.seed(1111)
 
+print()
+print("========================================================")
+print("run: {} epochs === Freebase-c === {}".format(int(sys.argv[1]), "GripNet"))
+print("========================================================")
 
 # ###################################
 # data processing
@@ -95,11 +99,17 @@ class Model(Module):
 
 
 # hyper-parameter setting
-pp_nhids_gcn = [int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])]
-qq_nhids_gcn = [int(sys.argv[5]), int(sys.argv[6]), int(sys.argv[7])]
-pa_out = [int(sys.argv[8]), int(sys.argv[9])]
-# aa_nhids_gcn = [sum(pa_out)*2, int(sys.argv[10]), int(sys.argv[11])]
-aa_nhids_gcn = [pa_out[-1], int(sys.argv[10])]
+pp_nhids_gcn = [256, 128, 128]
+qq_nhids_gcn = [256, 128, 128]
+pa_out = [128, 128]
+aa_nhids_gcn = [pa_out[-1], 32]
+
+# pp_nhids_gcn = [int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])]
+# qq_nhids_gcn = [int(sys.argv[5]), int(sys.argv[6]), int(sys.argv[7])]
+# pa_out = [int(sys.argv[8]), int(sys.argv[9])]
+# # aa_nhids_gcn = [sum(pa_out)*2, int(sys.argv[10]), int(sys.argv[11])]
+# aa_nhids_gcn = [pa_out[-1], int(sys.argv[10])]
+
 learning_rate = 0.01
 
 # model init
@@ -163,8 +173,11 @@ def train(epoch):
 
     out.train_out[epoch] = np.array([micro, macro])
 
-    # print('{:3d}   loss:{:0.4f}   micro:{:0.4f}   macro:{:0.4f}'
-    #       .format(epoch, loss.tolist(), micro, macro))
+    print(
+        "{:3d}   loss:{:0.4f}   micro:{:0.4f}   macro:{:0.4f}".format(
+            epoch, loss.tolist(), micro, macro
+        )
+    )
 
     return z, loss
 

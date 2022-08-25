@@ -21,16 +21,19 @@ from torch.utils.checkpoint import checkpoint
 print()
 print("========================================================")
 print(
-    "run: {} === PoSE-{} === {}".format(int(sys.argv[-3]), int(sys.argv[-2]), "GripNet")
+    "run: {} epochs === PoSE-{} === {}".format(
+        int(sys.argv[1]), int(sys.argv[2]), "GripNet"
+    )
 )
 print("========================================================")
 
+use_checkpoint = True if int(sys.argv[-1]) else False
 
 # ###################################
 # data processing
 # ###################################
 # load data
-ddd = int(sys.argv[-2])
+ddd = int(sys.argv[2])
 data = torch.load("datasets/pose/pose-{}.pt".format(ddd))
 
 # d = torch.load('gripNet_baselines/data/book_data_0.pt')
@@ -44,8 +47,8 @@ if not os.path.exists(out_dir):
 data.g_feat = sparse_id(data.n_g_node)
 data.d_feat = sparse_id(data.n_d_node)
 data.edge_weight = torch.ones(data.n_gg_edge)
-data.gd_edge_index = torch.tensor(data.gd_edge_index, dtype=torch.long)
-data.gg_edge_index = torch.tensor(data.gg_edge_index, dtype=torch.long)
+data.gd_edge_index = data.gd_edge_index.type(torch.long)
+data.gg_edge_index = data.gg_edge_index.type(torch.long)
 data.n_edges_per_type = [(i[1] - i[0]).data.tolist() for i in data.test_range]
 
 
@@ -80,7 +83,7 @@ class Model(Module):
 gg_nhids_gcn = [32, 16, 16]
 # gd_gcn = 16
 gd_out = [16, 32]
-dd_nhids_gcn = [sum(gd_out), int(sys.argv[-1])]
+dd_nhids_gcn = [sum(gd_out), 32]
 learning_rate = 0.01
 EPOCH_NUM = 100
 
@@ -91,6 +94,8 @@ model = Model(
     homoGraph(dd_nhids_gcn, multi_relational=True, n_rela=data.n_dd_edge_type),
     multiRelaInnerProductDecoder(sum(dd_nhids_gcn), data.n_dd_edge_type),
 ).to(device)
+
+print(model)
 
 # optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -122,8 +127,12 @@ def train(epoch):
     # neg_index = typed_negative_sampling(data.train_idx, data.n_d_node, data.train_range).to(device)
     neg_index = negative_sampling(data.train_idx, data.n_d_node).to(device)
 
-    pos_score = checkpoint(model.dmt, z, pos_index, data.train_et)
-    neg_score = checkpoint(model.dmt, z, neg_index, data.train_et)
+    if use_checkpoint:
+        pos_score = checkpoint(model.dmt, z, pos_index, data.train_et)
+        neg_score = checkpoint(model.dmt, z, neg_index, data.train_et)
+    else:
+        pos_score = model.dmt(z, pos_index, data.train_et)
+        neg_score = model.dmt(z, neg_index, data.train_et)
 
     pos_loss = -torch.log(pos_score + EPS).mean()
     neg_loss = -torch.log(1 - neg_score + EPS).mean()
@@ -213,7 +222,7 @@ for epoch in range(EPOCH_NUM):
     out.test_out[epoch] = [auprc, auroc, ap]
 
 # model name
-name = "{}-{}-{}-{}".format(sys.argv[-3], gg_nhids_gcn, gd_out, dd_nhids_gcn)
+name = "{}-{}-{}-{}".format(sys.argv[1], gg_nhids_gcn, gd_out, dd_nhids_gcn)
 
 if device == "cuda":
     data = data.to("cpu")
