@@ -11,9 +11,7 @@ GripNet is an effective and efficient framework to learn node representations on
 We provide the implementations of GripNet in the root directory, and those of baselines:
 
 - TransE, RotatE, ComplEx, DistMult and RGCN on link prediction (LP) in `baselines/LP_baselines/`, and
-- GCN, GAT, RGCN and GANN on node classification (NC) in `baselines/NC_baselines/`,
-
-on three link prediction datasets (pose-0/1/2) and five node classification datasets (aminer and freebase-a/b/c/d).
+- GCN, GAT, RGCN and GANN on node classification (NC) in `baselines/NC_baselines/`.
 
 Each model directory contains a bash script, which gives examples to run models. You can explore different model structures and hyperparameter settings by changing input parameters or code directly. It takes three steps to run these scripts.
 
@@ -30,12 +28,14 @@ pip install .
 
 ### Step 2: Dataset Preparation
 
-Download the datasets into the corresponding directories with the provided links and unzip them:
+We constructed eight datasets for the experiments: three link prediction datasets (pose-0/1/2) and five node classification datasets (aminer and freebase-a/b/c/d). 
+
+The datasets need to be downloaded into the corresponding directories with the provided links and unzipped:
 
 - `.`: https://www.dropbox.com/s/hnt3v5890qozbtx/datasets.zip
 - `./baselines/`: https://www.dropbox.com/s/wieca61m7jw2zqv/datasets_baselines.zip
 
-; or use the following commands:
+Or, prepare the datasets using the following commands:
 
 ```bash
 wget https://www.dropbox.com/s/hnt3v5890qozbtx/datasets.zip
