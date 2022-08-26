@@ -73,7 +73,7 @@ bash run_nc.sh	# node classification
 
 **Note when using CPU**: *We use the [`pytorch_memlab`](https://github.com/Stonesjtu/pytorch_memlab) package by default to evaluate the GPU memory usage during training. If you are trining GripNet models on CPU, please find and comment the lines of `@profile` in the code. For example, comment the 112 line in `GripNet-pose.py`*:
 
-https://github.com/NYXFLOWER/GripNet/blob/master/GripNet-pose.py#L109-L113
+https://github.com/NYXFLOWER/GripNet/blob/43022286290ae10f1d615520cc8ef37320e41953/GripNet-pose.py#L109-L113
 
 ## Citation
 
