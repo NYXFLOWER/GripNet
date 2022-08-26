@@ -6,6 +6,16 @@
   "commit": false,
   "contributors": [
     {
+      "login": "sangsq",
+      "name": "sangsq",
+      "avatar_url": "https://avatars.githubusercontent.com/u/16742808?v=4",
+      "profile": "https://github.com/sangsq",
+      "contributions": [
+        "code",
+        "ideas"
+      ]
+    },
+    {
       "login": "pz-white",
       "name": "peizhenbai",
       "avatar_url": "https://avatars.githubusercontent.com/u/67964033?v=4",
@@ -14,6 +24,15 @@
         "code",
         "test",
         "data"
+      ]
+    },
+    {
+      "login": "Lyric-19",
+      "name": "Lyric-19",
+      "avatar_url": "https://avatars.githubusercontent.com/u/55618685?v=4",
+      "profile": "https://github.com/Lyric-19",
+      "contributions": [
+        "bug"
       ]
     }
   ],
