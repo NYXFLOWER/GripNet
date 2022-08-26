@@ -4,7 +4,7 @@ This repository contains the official implementation of GripNet, as well as eigh
 
 [GripNet: Graph Information Propagation on Supergraph for Heterogeneous Graphs](https://www.sciencedirect.com/science/article/pii/S0031320322004538), Hao Xu, Shengqi Sang, Peizhen Bai, Ruike Li, Laurence Yang, Haiping Lu (Pattern Recognition 2022)
 
-**Update August 2022**: *Check out [this work](https://doi.org/10.1145/3511808.3557676) by Haiping Lu et al. (CIKM 2022) from the PyKale team. In the `pykale` library, the structure and interface of GripNet implementation are improved, which makes it more convenient to construct GripNet models applied to knowledge graphs with high heterogeneity. Code [here](https://github.com/pykale/pykale).*
+🍺 **Update August 2022**: *Check out [this work](https://doi.org/10.1145/3511808.3557676) by Haiping Lu et al. (CIKM 2022) from the PyKale team. In the `pykale` library, the structure and interface of GripNet implementation are improved, which makes it more convenient to construct GripNet models applied to knowledge graphs with high heterogeneity. Code [here](https://github.com/pykale/pykale).*
 
 ## GripNet and Baselines
 
@@ -71,7 +71,7 @@ bash run_lp.sh	# link prediction
 bash run_nc.sh	# node classification
 ```
 
-**Note when using CPU**: *We use the [`pytorch_memlab`](https://github.com/Stonesjtu/pytorch_memlab) package by default to evaluate the GPU memory usage during training. If you are trining GripNet models on CPU, please find and comment the lines of `@profile` in the code. For example, comment the 112 line in `GripNet-pose.py`*:
+🧋 **Note when using CPU**: *We use the [`pytorch_memlab`](https://github.com/Stonesjtu/pytorch_memlab) package by default to evaluate the GPU memory usage during training. If you are trining GripNet models on CPU, please find and comment the lines of `@profile` in the code. For example, comment the 112 line in `GripNet-pose.py`*:
 
 https://github.com/NYXFLOWER/GripNet/blob/43022286290ae10f1d615520cc8ef37320e41953/GripNet-pose.py#L109-L113
 
