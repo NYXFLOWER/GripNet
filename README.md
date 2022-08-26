@@ -1,8 +1,10 @@
 # Graph Information Propagation Network (GripNet) Model
 
-This repository contains a PyTorch implementation of GripNet, as well as eight datasets and experiments on link prediction and node classification. The description of model and the results can be found in our paper:
+This repository contains the official implementation of GripNet, as well as eight datasets and experiments on link prediction and node classification. The description of model and the results can be found in our paper:
 
 [GripNet: Graph Information Propagation on Supergraph for Heterogeneous Graphs](https://www.sciencedirect.com/science/article/pii/S0031320322004538), Hao Xu, Shengqi Sang, Peizhen Bai, Ruike Li, Laurence Yang, Haiping Lu (Pattern Recognition 2022)
+
+**Update August 2022**: *Check out [this work](https://doi.org/10.1145/3511808.3557676) by Haiping Lu et al. (CIKM 2022) from the PyKale team. In the `pykale` library, the structure and interface of GripNet implementation are improved, which makes it more convenient to construct GripNet models applied to knowledge graphs with high heterogeneity. Code [here](https://github.com/pykale/pykale).*
 
 ## GripNet and Baselines
 
@@ -13,13 +15,15 @@ We provide the implementations of GripNet in the root directory, and those of ba
 - TransE, RotatE, ComplEx, DistMult and RGCN on link prediction (LP) in `baselines/LP_baselines/`, and
 - GCN, GAT, and RGCN on node classification (NC) in `baselines/NC_baselines/`.
 
-Each model directory contains a bash script, which gives examples to run models. You can explore different model structures and hyperparameter settings by changing input parameters or code directly. It takes three steps to run these scripts.
+Each model directory contains a bash script, which gives examples to run models. You can explore different model structures and hyperparameter settings by changing input parameters or code directly. 
+
+It takes three steps to run these scripts.
 
 ### Step 1: Installation
 
-(Prerequisites): Before installing `gripnet`, PyTorch (torch>=1.4.0) and PyTorch Geometric (torch_geometric<2.0) are required to be installed matching your hardware.
+All models in this repository are built on top of the [`PyTorch`](https://pytorch.org/get-started/locally/) and [`PyG`](https://github.com/pyg-team/pytorch_geometric). Before installing `gripnet`, `torch>=1.4.0` and `torch_geometric<2.0` are required to be installed matching your hardware.
 
-Install `gripnet` from source:
+Then, install `gripnet` from source:
 ```bash
 git clone https://github.com/NYXFLOWER/GripNet.git
 cd GripNet
@@ -46,10 +50,11 @@ wget https://www.dropbox.com/s/g81hgxnewi7br8d/datasets_baselines.zip
 unzip datasets_baselines.zip && rm datasets_baselines.zip
 ```
 
-Additionally, the raw data and code for constructing these datasets are available to download via: https://www.dropbox.com/s/41e43exro113pc9/data.zip
+Additionally, the raw data and code for constructing these datasets are available to download via: https://www.dropbox.com/s/41e43exro113pc9/data.zip. The raw data is collected from [BioSNAP](https://snap.stanford.edu/biodata/index.html), [Arnetminer](https://dl.acm.org/doi/10.1145/1401890.1402008), and [Freebase](https://ieeexplore.ieee.org/document/9300240).
 
 ### Step 3: Running scripts
 
+We provide descriptions of arguments in these bash scripts.
 To run a given experiment, execute our bash scripts as follows:
 
 #### Run GripNet demo:
@@ -66,7 +71,9 @@ bash run_lp.sh	# link prediction
 bash run_nc.sh	# node classification
 ```
 
-Note that argument descriptions are provided in these bash scripts.
+**Note when using CPU**: *We use the [`pytorch_memlab`](https://github.com/Stonesjtu/pytorch_memlab) package by default to evaluate the GPU memory usage during training. If you are trining GripNet models on CPU, please find and comment the lines of `@profile` in the code. For example, comment the 112 line in `GripNet-pose.py`*:
+
+https://github.com/NYXFLOWER/GripNet/blob/master/GripNet-pose.py#L109-L113
 
 ## Citation
 
