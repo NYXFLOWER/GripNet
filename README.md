@@ -2,9 +2,9 @@
 
 This repository contains the official implementation of GripNet, as well as eight datasets and experiments on link prediction and node classification. The description of model and the results can be found in our paper:
 
-[GripNet: Graph Information Propagation on Supergraph for Heterogeneous Graphs](https://www.sciencedirect.com/science/article/pii/S0031320322004538), Hao Xu, Shengqi Sang, Peizhen Bai, Ruike Li, Laurence Yang, Haiping Lu (Pattern Recognition 2022)
+[GripNet: Graph Information Propagation on Supergraph for Heterogeneous Graphs](https://doi.org/10.1016/j.patcog.2022.108973), Hao Xu, Shengqi Sang, Peizhen Bai, Ruike Li, Laurence Yang, Haiping Lu (Pattern Recognition, 2023)
 
-🍺 **Update August 2022**: *Check out [this work](https://doi.org/10.1145/3511808.3557676) by Haiping Lu et al. (CIKM 2022) from the PyKale team. In the [`pykale`](https://github.com/pykale/pykale) library, the structure and interface of GripNet implementation are improved, which makes it more convenient to construct GripNet models applied to knowledge graphs with high heterogeneity.*
+🍺 **Update August 2022**: *Check out [this work](https://doi.org/10.1145/3511808.3557676) by Haiping Lu et al. (CIKM, 2022) from the PyKale team. In the [`pykale`](https://github.com/pykale/pykale) library, the structure and interface of GripNet implementation are improved, which makes it more convenient to construct GripNet models applied to knowledge graphs with high heterogeneity.*
 
 ## GripNet and Baselines
 
